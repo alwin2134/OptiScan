@@ -2,6 +2,7 @@ package com.optiscan.app.speech
 
 import android.content.Context
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import java.util.Locale
 
@@ -15,8 +16,15 @@ class TtsManager(
 
     private val tag = "TtsManager"
     private var tts: TextToSpeech? = TextToSpeech(context.applicationContext, this)
+
     var isReady: Boolean = false
         private set
+
+    var voiceFeedbackEnabled: Boolean = true
+    var currentSpeechRate: Float = 1.0f
+        private set
+
+    var onSpeechStateChanged: ((isSpeaking: Boolean) -> Unit)? = null
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
@@ -25,8 +33,28 @@ class TtsManager(
                 Log.w(tag, "Default locale not supported, falling back to US English")
                 tts?.language = Locale.US
             }
-            tts?.setSpeechRate(1.0f)
+            tts?.setSpeechRate(currentSpeechRate)
             tts?.setPitch(1.0f)
+
+            tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                override fun onStart(utteranceId: String?) {
+                    onSpeechStateChanged?.invoke(true)
+                }
+
+                override fun onDone(utteranceId: String?) {
+                    onSpeechStateChanged?.invoke(false)
+                }
+
+                @Deprecated("Deprecated in Java")
+                override fun onError(utteranceId: String?) {
+                    onSpeechStateChanged?.invoke(false)
+                }
+
+                override fun onError(utteranceId: String?, errorCode: Int) {
+                    onSpeechStateChanged?.invoke(false)
+                }
+            })
+
             isReady = true
             Log.i(tag, "TTS initialized successfully")
             onInitComplete?.invoke(true)
@@ -38,21 +66,42 @@ class TtsManager(
     }
 
     /**
-     * Speak text aloud, interrupting any previous speech (QUEUE_FLUSH).
+     * Set playback speech rate (e.g. 0.75f, 1.0f, 1.5f).
+     */
+    fun setSpeechRate(rate: Float) {
+        currentSpeechRate = rate.coerceIn(0.5f, 2.5f)
+        tts?.setSpeechRate(currentSpeechRate)
+    }
+
+    /**
+     * Speak text aloud if voice feedback is enabled.
      */
     fun speak(text: String, queueMode: Int = TextToSpeech.QUEUE_FLUSH) {
+        if (!voiceFeedbackEnabled) {
+            Log.d(tag, "Voice feedback is disabled in settings; suppressing speech")
+            return
+        }
         if (!isReady || text.isBlank()) {
             Log.w(tag, "TTS not ready or empty text requested")
             return
         }
-        tts?.speak(text, queueMode, null, "OptiScanUtterance_${System.currentTimeMillis()}")
+        val utteranceId = "OptiScan_${System.currentTimeMillis()}"
+        tts?.speak(text, queueMode, null, utteranceId)
     }
 
     /**
-     * Stop any ongoing speech.
+     * Stop any ongoing speech immediately.
      */
     fun stop() {
         tts?.stop()
+        onSpeechStateChanged?.invoke(false)
+    }
+
+    /**
+     * Check if TTS engine is currently vocalizing.
+     */
+    fun isSpeaking(): Boolean {
+        return tts?.isSpeaking == true
     }
 
     /**

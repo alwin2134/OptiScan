@@ -1,0 +1,159 @@
+package com.optiscan.app.ui.screens
+
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
+import com.optiscan.app.navigation.ScanTask
+import com.optiscan.app.ui.components.ButtonVariant
+import com.optiscan.app.ui.components.OptiScanButton
+import com.optiscan.app.ui.components.ScreenTitle
+import com.optiscan.app.ui.theme.ActionPrimaryBlue
+import com.optiscan.app.ui.theme.BackgroundNearBlack
+import com.optiscan.app.ui.theme.BorderSubtle
+import com.optiscan.app.ui.theme.SurfaceDarkCharcoal
+import com.optiscan.app.ui.theme.TextLightGrey
+import com.optiscan.app.ui.theme.TextWhite
+
+/**
+ * Screen D: Image Preview
+ * Displays captured photo with two large actions: Use This Photo or Retake Photo.
+ */
+@Composable
+fun ImagePreviewScreen(
+    task: ScanTask,
+    bitmap: Bitmap?,
+    onUsePhoto: () -> Unit,
+    onRetakePhoto: () -> Unit,
+    onAnnounce: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LaunchedEffect(Unit) {
+        onAnnounce()
+    }
+
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        containerColor = BackgroundNearBlack
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(horizontal = 20.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Header
+            ScreenTitle(
+                title = "Review Photo",
+                subtitle = "Check your capture for ${task.displayTitle}",
+                onBackClick = onRetakePhoto,
+                backContentDescription = "Retake photo and return to camera"
+            )
+
+            // Captured Image Box
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(vertical = 12.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(SurfaceDarkCharcoal)
+                    .border(2.dp, BorderSubtle, RoundedCornerShape(16.dp))
+                    .semantics {
+                        this.contentDescription = "Captured photo ready for analysis."
+                    }
+            ) {
+                if (bitmap != null) {
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = "Captured camera image",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    // Simulated capture representation
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier.padding(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Image,
+                            contentDescription = null,
+                            tint = ActionPrimaryBlue,
+                            modifier = Modifier.size(68.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "Photo Captured",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = TextWhite
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Ready to proceed with ${task.displayTitle.lowercase()}.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextLightGrey
+                        )
+                    }
+                }
+            }
+
+            // Two Large Action Buttons
+            Column(
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp)
+            ) {
+                OptiScanButton(
+                    text = "Use This Photo",
+                    onClick = onUsePhoto,
+                    variant = ButtonVariant.PRIMARY,
+                    icon = Icons.Default.Check,
+                    contentDesc = "Use this photo button. Double-tap to start image analysis.",
+                    minHeight = 64
+                )
+
+                OptiScanButton(
+                    text = "Retake Photo",
+                    onClick = onRetakePhoto,
+                    variant = ButtonVariant.SURFACE,
+                    icon = Icons.Default.Refresh,
+                    contentDesc = "Retake photo button. Double-tap to return to live camera viewfinder.",
+                    minHeight = 60
+                )
+            }
+        }
+    }
+}

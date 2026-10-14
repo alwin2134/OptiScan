@@ -4,24 +4,34 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 
-private val HighContrastColorScheme = darkColorScheme(
-    primary = YellowAction,
-    onPrimary = DarkActionText,
-    secondary = CyanAction,
-    onSecondary = WhiteActionText,
-    background = DarkBackground,
-    onBackground = LightText,
-    surface = DarkSurface,
-    onSurface = LightText,
-    error = ErrorRed,
-    onError = LightText
+private val OptiColorScheme = darkColorScheme(
+    primary = ActionPrimaryBlue,
+    onPrimary = TextWhite,
+    primaryContainer = ActionPrimaryBlueHover,
+    onPrimaryContainer = TextWhite,
+    secondary = ActionSecondaryGreen,
+    onSecondary = TextWhite,
+    secondaryContainer = ActionSecondaryGreenHover,
+    onSecondaryContainer = TextWhite,
+    background = BackgroundNearBlack,
+    onBackground = TextWhite,
+    surface = SurfaceDarkCharcoal,
+    onSurface = TextWhite,
+    surfaceVariant = SurfaceCard,
+    onSurfaceVariant = TextLightGrey,
+    outline = BorderSubtle,
+    error = AlertError,
+    onError = TextWhite
 )
 
 @Composable
-fun OptiScanTheme(content: @Composable () -> Unit) {
+fun OptiScanTheme(
+    textScale: Float = 1.0f,
+    content: @Composable () -> Unit
+) {
     MaterialTheme(
-        colorScheme = HighContrastColorScheme,
-        typography = OptiTypography,
+        colorScheme = OptiColorScheme,
+        typography = createOptiTypography(textScale),
         content = content
     )
 }

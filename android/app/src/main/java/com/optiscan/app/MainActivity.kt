@@ -10,55 +10,50 @@ import androidx.activity.viewModels
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import com.optiscan.app.speech.TtsManager
-import com.optiscan.app.ui.screens.HomeScreen
-import com.optiscan.app.ui.screens.HomeScreenViewModel
-import com.optiscan.app.ui.theme.OptiScanTheme
+import com.optiscan.app.ui.screens.MainViewModel
+import com.optiscan.app.ui.screens.OptiScanApp
 
 /**
  * Main application activity initializing permissions, TTS, and the Compose UI root.
  */
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: HomeScreenViewModel by viewModels()
+    private val viewModel: MainViewModel by viewModels()
     private lateinit var ttsManager: TtsManager
     private var activePreviewView: PreviewView? = null
 
     private val requestCameraPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+            viewModel.setCameraPermission(isGranted)
             if (isGranted) {
                 activePreviewView?.let { bindCamera(it) }
-                viewModel.resetToIdle()
-            } else {
-                viewModel.setPermissionDenied()
             }
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Initialize TTS with accessible welcome announcement
-        ttsManager = TtsManager(this) { isSuccess ->
-            if (isSuccess) {
-                ttsManager.speak("OptiScan ready. Select Read Text or Describe Scene.")
-            }
-        }
+        // Initialize TTS
+        ttsManager = TtsManager(this)
         viewModel.attachTtsManager(ttsManager)
 
+        // Check initial camera permission
+        val initialCameraGranted = hasCameraPermission()
+        viewModel.setCameraPermission(initialCameraGranted)
+
         setContent {
-            OptiScanTheme {
-                HomeScreen(
-                    viewModel = viewModel,
-                    onRequestCameraPermission = { checkAndRequestCameraPermission() },
-                    onPreviewReady = { previewView ->
-                        activePreviewView = previewView
-                        if (hasCameraPermission()) {
-                            bindCamera(previewView)
-                        } else {
-                            checkAndRequestCameraPermission()
-                        }
+            OptiScanApp(
+                viewModel = viewModel,
+                onRequestCameraPermission = { checkAndRequestCameraPermission() },
+                onBindCamera = { previewView ->
+                    activePreviewView = previewView
+                    if (hasCameraPermission()) {
+                        bindCamera(previewView)
+                    } else {
+                        checkAndRequestCameraPermission()
                     }
-                )
-            }
+                }
+            )
         }
     }
 
@@ -71,6 +66,7 @@ class MainActivity : ComponentActivity() {
 
     private fun checkAndRequestCameraPermission() {
         if (hasCameraPermission()) {
+            viewModel.setCameraPermission(true)
             activePreviewView?.let { bindCamera(it) }
         } else {
             requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
