@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">OptiScan</string>
+    <string name="action_read_text">Read Text</string>
+    <string name="action_describe_image">Describe Scene</string>
+    <string name="action_recapture">Retake Photo</string>
+    <string name="action_repeat_tts">Repeat Aloud</string>
+    <string name="status_ready">OptiScan Ready. Aim camera and select an action.</string>
+    <string name="status_processing">Analyzing image, please hold steady...</string>
+    <string name="status_ocr_processing">Reading printed text on device...</string>
+    <string name="camera_permission_required">Camera permission is required to capture photos and read text.</string>
+    <string name="grant_permission">Grant Camera Permission</string>
+</resources>

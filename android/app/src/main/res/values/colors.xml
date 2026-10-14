@@ -1,0 +1,12 @@
+<resources>
+    <!-- High-contrast accessible color palette -->
+    <color name="opti_black">#121212</color>
+    <color name="opti_white">#FFFFFF</color>
+    <color name="opti_yellow">#FFD600</color> <!-- High-visibility yellow for primary action buttons -->
+    <color name="opti_blue">#00E5FF</color>   <!-- High-contrast cyan/blue for secondary action -->
+    <color name="opti_gray_dark">#1E1E1E</color>
+    <color name="opti_gray_medium">#424242</color>
+    <color name="opti_gray_light">#E0E0E0</color>
+    <color name="opti_warning">#FFA000</color>
+    <color name="opti_error">#D32F2F</color>
+</resources>
