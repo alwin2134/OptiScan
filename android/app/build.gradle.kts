@@ -19,8 +19,8 @@ android {
             useSupportLibrary = true
         }
 
-        // Configurable backend URL. 10.0.2.2 reaches localhost from standard Android emulator.
-        buildConfigField("String", "DEFAULT_BACKEND_URL", "\"http://10.0.2.2:8000/\"")
+        // Configurable backend URL pointing to the live Render deployment
+        buildConfigField("String", "DEFAULT_BACKEND_URL", "\"https://optiscan-backend-509f.onrender.com/\"")
     }
 
     buildTypes {
@@ -31,11 +31,11 @@ android {
                 "proguard-rules.pro"
             )
             signingConfig = signingConfigs.getByName("debug")
-            buildConfigField("String", "DEFAULT_BACKEND_URL", "\"\"")
+            buildConfigField("String", "DEFAULT_BACKEND_URL", "\"https://optiscan-backend-509f.onrender.com/\"")
         }
         debug {
             isMinifyEnabled = false
-            buildConfigField("String", "DEFAULT_BACKEND_URL", "\"http://10.0.2.2:8000/\"")
+            buildConfigField("String", "DEFAULT_BACKEND_URL", "\"https://optiscan-backend-509f.onrender.com/\"")
         }
     }
 

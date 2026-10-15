@@ -38,11 +38,14 @@ object NetworkConfig {
      * Determines the initial default backend URL based on build variant.
      */
     fun getDefaultBaseUrl(): String {
+        val buildUrl = BuildConfig.DEFAULT_BACKEND_URL.trim()
+        if (isValidHostedUrl(buildUrl)) {
+            return normalizeUrl(buildUrl)
+        }
         return if (isDebug) {
             if (isEmulator) EMULATOR_BASE_URL else PHYSICAL_DEVICE_REVERSE_URL
         } else {
-            val buildUrl = BuildConfig.DEFAULT_BACKEND_URL.trim()
-            if (isValidHostedUrl(buildUrl)) normalizeUrl(buildUrl) else ""
+            ""
         }
     }
 

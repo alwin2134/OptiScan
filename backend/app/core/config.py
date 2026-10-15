@@ -48,8 +48,8 @@ class Settings(BaseSettings):
     # Options: "mock", "gemini", "openai"
     vision_provider: str = "mock"
     vision_api_key: Optional[str] = None
-    vision_model_name: str = "gemini-2.5-flash"
-    vision_request_timeout_seconds: float = 25.0
+    vision_model_name: str = "gemini-flash-latest"
+    vision_request_timeout_seconds: float = 30.0
 
     @field_validator("vision_provider")
     @classmethod
