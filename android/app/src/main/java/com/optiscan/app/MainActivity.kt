@@ -36,6 +36,7 @@ class MainActivity : ComponentActivity() {
         // Initialize TTS
         ttsManager = TtsManager(this)
         viewModel.attachTtsManager(ttsManager)
+        viewModel.initAccessibility(this)
 
         // Check initial camera permission
         val initialCameraGranted = hasCameraPermission()
@@ -55,6 +56,14 @@ class MainActivity : ComponentActivity() {
                 }
             )
         }
+    }
+
+    override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent?): Boolean {
+        if (keyCode == android.view.KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == android.view.KeyEvent.KEYCODE_VOLUME_UP) {
+            val handled = viewModel.handleVolumeKey(this, keyCode)
+            if (handled) return true
+        }
+        return super.onKeyDown(keyCode, event)
     }
 
     private fun hasCameraPermission(): Boolean {

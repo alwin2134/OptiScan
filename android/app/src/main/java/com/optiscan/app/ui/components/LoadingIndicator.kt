@@ -16,7 +16,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.optiscan.app.ui.theme.ActionPrimaryBlue
@@ -42,6 +44,7 @@ fun LoadingIndicator(
             .background(SurfaceDarkCharcoal, RoundedCornerShape(16.dp))
             .padding(vertical = 36.dp, horizontal = 24.dp)
             .semantics {
+                this.liveRegion = LiveRegionMode.Polite
                 this.contentDescription = accessibleLabel
             }
     ) {
