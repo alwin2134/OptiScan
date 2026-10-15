@@ -9,4 +9,5 @@
     <color name="opti_gray_light">#E0E0E0</color>
     <color name="opti_warning">#FFA000</color>
     <color name="opti_error">#D32F2F</color>
+    <color name="ic_launcher_background">#FFFFFF</color>
 </resources>
