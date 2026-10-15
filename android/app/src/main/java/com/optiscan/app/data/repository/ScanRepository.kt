@@ -9,6 +9,7 @@ import com.optiscan.app.data.models.AnalysisResponse
 import com.optiscan.app.data.models.StatusTypes
 import com.optiscan.app.data.models.TaskTypes
 import com.optiscan.app.ocr.OcrService
+import com.optiscan.app.utils.NetworkConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -19,7 +20,7 @@ import java.io.IOException
 import java.net.SocketTimeoutException
 
 /**
- * Repository interface defining visual analysis and OCR operations.
+ * Repository interface defining visual analysis, OCR, and server configuration operations.
  */
 interface ScanRepository {
     suspend fun analyzeImage(
@@ -37,6 +38,12 @@ interface ScanRepository {
     fun setMockMode(enabled: Boolean)
 
     fun isMockMode(): Boolean
+
+    fun updateBaseUrl(newUrl: String)
+
+    fun getBaseUrl(): String
+
+    fun isConfigured(): Boolean
 }
 
 /**
@@ -60,8 +67,21 @@ class ScanRepositoryImpl(
 
     override fun isMockMode(): Boolean = useMockBackend
 
+    override fun updateBaseUrl(newUrl: String) {
+        if (newUrl.isNotBlank()) {
+            NetworkConfig.activeBaseUrl = newUrl
+            this.api = ApiClient.createService(NetworkConfig.activeBaseUrl)
+            Log.i(tag, "Updated backend URL to: ${NetworkConfig.activeBaseUrl}")
+        }
+    }
+
+    override fun getBaseUrl(): String = NetworkConfig.activeBaseUrl
+
+    override fun isConfigured(): Boolean = NetworkConfig.isConfigured()
+
     override suspend fun checkBackendHealth(): Boolean = withContext(Dispatchers.IO) {
         if (useMockBackend) return@withContext true
+        if (!isConfigured()) return@withContext false
         try {
             val response = api.checkHealth()
             response.status == "ok"
@@ -103,6 +123,16 @@ class ScanRepositoryImpl(
                     reason = if (isHindi) "ऑफलाइन मॉक बैकएंड मोड सक्षम है।" else "Offline mock backend mode is enabled."
                 )
             )
+        }
+
+        // Release/production check: verify that a valid server URL is configured
+        if (!isConfigured()) {
+            val unconfiguredMsg = if (language.equals("hi", ignoreCase = true)) {
+                "क्लाउड बैकएंड सर्वर कॉन्फ़िगर नहीं है। कृपया सेटिंग्स में सर्वर URL दर्ज करें या ऑफलाइन मॉक मोड सक्षम करें।"
+            } else {
+                "Hosted backend URL is not configured. Please enter a valid server URL in Settings or enable Offline Mock Mode."
+            }
+            return@withContext Result.failure(IllegalStateException(unconfiguredMsg))
         }
 
         try {
@@ -151,7 +181,12 @@ class ScanRepositoryImpl(
             Result.failure(Exception("Connection to AI backend timed out. Please check your network and try again.", e))
         } catch (e: IOException) {
             Log.e(tag, "Network I/O failure", e)
-            Result.failure(Exception("Could not connect to OptiScan backend. Please verify your connection or enable Offline Mock in Settings.", e))
+            val connMsg = if (language.equals("hi", ignoreCase = true)) {
+                "OptiScan बैकएंड से कनेक्ट नहीं हो सका। कृपया अपना नेटवर्क कनेक्शन जांचें या सेटिंग्स में ऑफलाइन मॉक मोड चालू करें।"
+            } else {
+                "Could not connect to OptiScan backend. Please verify your connection or enable Offline Mock in Settings."
+            }
+            Result.failure(Exception(connMsg, e))
         } catch (e: Exception) {
             Log.e(tag, "Unexpected error in analyzeImage", e)
             Result.failure(e)

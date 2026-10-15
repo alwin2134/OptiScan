@@ -163,31 +163,53 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 ---
 
-### 4.2. Android Client Networking
+### 4.2. Android Client Networking & Configuration
 
-The Android application needs to communicate with the FastAPI backend running on your development workstation. Choose the option matching your demo environment:
+The Android application supports seamless switching between local development, physical device testing, and production hosted environments:
 
-#### Option A: Android Studio Emulator (Easiest)
-- The Android Emulator routes `10.0.2.2` directly to `localhost` on the host workstation.
-- **OptiScan automatically defaults to `http://10.0.2.2:8000/`** when running inside an emulator.
-- No manual network configuration is required.
+#### Option A: In-App Server Settings (Universal for Any Device or Build)
+- Open the OptiScan app.
+- Tap the **Settings** gear icon in the top right.
+- Under **Backend Server Connection**, enter your backend URL (e.g. `https://api.yourdomain.com/` or `http://192.168.1.15:8000/`).
+- Tap **Save Server URL** (persisted securely across app restarts).
+- Tap **Test Connection** to immediately verify live end-to-end connectivity with spoken audio and visual status feedback.
 
-#### Option B: Physical Android Device via USB Cable (Recommended for Live Demos)
+#### Option B: Android Studio Emulator (Debug Builds)
+- The Android Emulator automatically routes `10.0.2.2` to `localhost` on the host workstation.
+- In **Debug** builds, OptiScan defaults to `http://10.0.2.2:8000/` automatically. No manual setup is required.
+
+#### Option C: Physical Android Device via USB Cable (Debug Builds)
 - Connect your Android phone to your computer via USB with **USB Debugging** enabled.
-- Run the following ADB reverse command in PowerShell or terminal:
+- Run the ADB reverse port forwarding command in your terminal:
   ```powershell
   adb reverse tcp:8000 tcp:8000
   ```
 - This forwards port 8000 on the physical phone directly to port 8000 on your host computer.
-- **OptiScan automatically detects physical hardware and connects to `http://127.0.0.1:8000/`**, making connection seamless over USB.
+- In the app Settings, configure the URL as `http://127.0.0.1:8000/`.
 
-#### Option C: Physical Android Device via Local Wi-Fi
-- Ensure both the Android phone and development machine are connected to the same Wi-Fi network.
-- Determine your computer's local LAN IP (e.g. `192.168.1.15`).
-- In `android/app/src/main/java/com/optiscan/app/utils/NetworkConfig.kt`, set:
-  ```kotlin
-  var activeBaseUrl: String = "http://192.168.1.15:8000/"
-  ```
+#### Option D: Production Hosted Backend (Release Builds)
+- **Release builds** require a hosted HTTPS endpoint (e.g. Google Cloud Run, AWS, Render, or VPS with SSL).
+- Release builds enforce Android's network security policy prohibiting cleartext traffic and rejecting unconfigured loopback addresses.
+- If no backend URL is configured, OptiScan cleanly guides the user to set a server URL in Settings or enable Offline Mock Mode, avoiding silent crashes.
+- See [docs/deployment.md](docs/deployment.md) for step-by-step production hosting and container deployment guides.
+
+---
+
+### 4.3. Production Containerization (Docker & Docker Compose)
+
+The backend includes a production-ready, security-hardened Docker setup:
+- Python 3.11-slim base image.
+- Dedicated non-root service account (`optiscan`).
+- Pinned dependencies with automated `/health` container healthcheck.
+
+```bash
+# Run backend with Docker Compose
+docker compose up -d
+
+# Verify container health
+curl http://localhost:8000/health
+# Returns: {"status":"ok","service":"optiscan-backend"}
+```
 
 ---
 
@@ -270,14 +292,29 @@ OptiScan is designed to never leave a blind user stuck in a silent or unresponsi
 
 ---
 
-## 7. Automated Test Coverage & Verification
+## 7. Offline vs. Online Capabilities
+
+OptiScan is designed for graceful degradation, ensuring users are never left stranded when network connectivity is lost:
+
+| Feature | Online (Cloud Backend Connected) | Offline (No Network / Airplane Mode) |
+|---|---|---|
+| **Text Reading (Read Text)** | High-accuracy scene text recognition with AI reasoning | **100% On-Device:** Google ML Kit OCR extracts printed text and speaks it aloud |
+| **Scene Description** | Gemini 2.5 Flash spatial scene analysis and hazard detection | Speaks clean error stating cloud connection is required; guides user to retry |
+| **Follow-up Questions** | Interactive multi-turn voice and text Q&A | Speaks clean notice stating cloud connection is required |
+| **Voice Reading (TTS)** | On-device Android `TextToSpeech` (English & Hindi) | **100% On-Device:** Android TTS functions without internet |
+| **Voice Input (Speech)** | Android SpeechRecognizer with network cloud models | Typed text input fallback works completely offline |
+| **Offline Mock Mode** | N/A | Full deterministic offline simulation clearly marked with `[Offline Mock]` |
+
+---
+
+## 8. Automated Test Coverage & Verification
 
 Every component is validated with automated unit and regression suites:
 
 ```text
 Backend pytest Suite:
-============================== 55 passed in 2.14s ==============================
-- Health check endpoints
+============================== 55 passed in 2.39s ==============================
+- Health check endpoints (/health)
 - Multipart image upload validation (JPEG, PNG, WEBP, MPO)
 - Sharpness, blur, underexposure, and decompression bomb detection
 - Gemini Vision provider payload construction & error sanitization
@@ -286,32 +323,36 @@ Backend pytest Suite:
 - Explicit [Offline Mock] branding in mock mode
 
 Android Gradle Test Suite:
-============================== 26 passed in 6.78s ==============================
-- Model JSON serialization/deserialization contracts
-- Preferences persistence (Language, Triple-Tap)
-- Mock vision repository dispatch & explicit mock branding
-- MainViewModel state transitions & error handling
+============================== 33 passed in 3.46s ==============================
+- Model JSON serialization/deserialization contracts & API validation
+- NetworkConfig URL validation, normalization, and release security policies
+- Preferences persistence (Language, Triple-Tap, Custom Backend URL)
+- ScanRepository dynamic URL updates and backend connection testing
+- MainViewModel state transitions, offline OCR fallback, and error handling
 - Navigation speech stoppage on screen transitions
-- No silent mock fabrication on cloud network outage
+- Honest visual perception (never fabricating canned mock answers in live mode)
 - Bilingual AppStrings coverage (English & Hindi)
 
-Android Build:
-- assembleDebug: SUCCESSFUL (Produces installable debug APK)
+Android Build Verification:
+- assembleDebug:   SUCCESSFUL (Installable debug APK)
+- assembleRelease: SUCCESSFUL (Signed release APK ready for deployment)
 ```
 
 ---
 
-## 8. Implementation Status
+## 9. Implementation Status
 
 | Component | Status | Verified Functionality |
 |---|---|---|
-| **FastAPI Backend Core** | **Working** | CORS, streaming chunk reads, config loading, and logging. |
-| **Backend `/health` & `/analyze`** | **Working** | Tested across 55 pytest test cases. |
-| **Blur & Sharpness Heuristics** | **Working** | Edge-variance detection for mobile camera frames. |
-| **Google Gemini 2.5 Flash Provider** | **Working** | Multimodal image description, follow-up Q&A, and error handling. |
-| **On-Device ML Kit OCR** | **Working** | Offline text extraction with cloud fallback. |
-| **Bilingual Localization (EN & HI)** | **Working** | Full UI, TTS, SpeechRecognizer, and Gemini prompting in Hindi. |
-| **Medical Term Safety** | **Working** | Verification that medicine brand names and dosages are not altered. |
-| **Triple-Tap Accidental Protection** | **Working** | 3-tap mode for low-vision users with 1-tap emergency bypass. |
-| **Acoustic Loop & TTS Management** | **Working** | Speech queueing, stop controls, and screen transition stoppage. |
-| **Offline Mock Resilience** | **Working** | Fully functional offline demonstration mode with explicit mock labeling. |
+| **FastAPI Backend Core** | **Production Ready** | CORS, streaming chunk reads, config loading, containerization. |
+| **Backend `/health` & `/analyze`** | **Production Ready** | Tested across 55 pytest test cases. |
+| **Blur & Sharpness Heuristics** | **Production Ready** | Edge-variance detection for mobile camera frames. |
+| **Google Gemini 2.5 Flash Provider** | **Production Ready** | Multimodal image description, follow-up Q&A, and error handling. |
+| **On-Device ML Kit OCR** | **Production Ready** | Offline text extraction with cloud fallback. |
+| **Bilingual Localization (EN & HI)** | **Production Ready** | Full UI, TTS, SpeechRecognizer, and Gemini prompting in Hindi. |
+| **Medical Term Safety** | **Production Ready** | Medicine brand names and dosages preserved faithfully. |
+| **Triple-Tap Accidental Protection** | **Production Ready** | 3-tap mode for low-vision users with 1-tap emergency bypass. |
+| **Acoustic Loop & TTS Management** | **Production Ready** | Speech queueing, stop controls, and screen transition stoppage. |
+| **Configurable Backend Connection** | **Production Ready** | Settings UI to set and test custom server URLs on any device. |
+| **Offline Mock Resilience** | **Production Ready** | Fully functional offline demonstration mode with explicit mock labeling. |
+

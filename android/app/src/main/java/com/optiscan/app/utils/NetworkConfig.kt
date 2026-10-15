@@ -1,22 +1,25 @@
 package com.optiscan.app.utils
 
 import android.os.Build
+import com.optiscan.app.BuildConfig
 
 /**
  * Networking configuration for backend communication.
  *
- * EMULATOR NETWORKING:
+ * DEBUG BUILDS:
  * On Android emulators, '10.0.2.2' maps to '127.0.0.1' (localhost) on the host computer.
+ * On physical devices connected via USB, '127.0.0.1' maps with `adb reverse tcp:8000 tcp:8000`.
  *
- * PHYSICAL DEVICE NETWORKING:
- * When debugging a physical Android device connected via USB, run:
- *   adb reverse tcp:8000 tcp:8000
- * This forwards port 8000 on the device to port 8000 on your host computer, allowing
- * 'http://127.0.0.1:8000/' to reach your local FastAPI server directly.
+ * RELEASE BUILDS:
+ * Must NOT silently target 127.0.0.1, emulator addresses, or ADB reverse forwarding.
+ * Targets a configured hosted HTTPS backend URL or explicitly reports unconfigured status.
  */
 object NetworkConfig {
     const val EMULATOR_BASE_URL = "http://10.0.2.2:8000/"
     const val PHYSICAL_DEVICE_REVERSE_URL = "http://127.0.0.1:8000/"
+
+    val isDebug: Boolean
+        get() = BuildConfig.DEBUG
 
     /**
      * Heuristic to detect whether the app is executing inside an Android emulator.
@@ -32,11 +35,60 @@ object NetworkConfig {
                 || Build.MANUFACTURER?.contains("Genymotion") == true
 
     /**
-     * Active backend base URL.
-     * Automatically resolves to 10.0.2.2:8000 on emulators and 127.0.0.1:8000 on physical devices.
+     * Determines the initial default backend URL based on build variant.
      */
-    var activeBaseUrl: String = if (isEmulator) EMULATOR_BASE_URL else PHYSICAL_DEVICE_REVERSE_URL
-        set(value) {
-            field = if (value.endsWith("/")) value else "$value/"
+    fun getDefaultBaseUrl(): String {
+        return if (isDebug) {
+            if (isEmulator) EMULATOR_BASE_URL else PHYSICAL_DEVICE_REVERSE_URL
+        } else {
+            val buildUrl = BuildConfig.DEFAULT_BACKEND_URL.trim()
+            if (isValidHostedUrl(buildUrl)) normalizeUrl(buildUrl) else ""
         }
+    }
+
+    /**
+     * Validates whether a given URL has an acceptable HTTP/HTTPS scheme and minimal structure.
+     */
+    fun isValidUrl(url: String?): Boolean {
+        if (url.isNullOrBlank()) return false
+        val trimmed = url.trim().lowercase()
+        return (trimmed.startsWith("http://") || trimmed.startsWith("https://")) && trimmed.length > 8
+    }
+
+    /**
+     * Validates that the URL is a hosted URL (not localhost or loopback).
+     */
+    fun isValidHostedUrl(url: String?): Boolean {
+        if (!isValidUrl(url)) return false
+        val trimmed = url!!.trim().lowercase()
+        return !trimmed.contains("127.0.0.1") && !trimmed.contains("localhost") && !trimmed.contains("10.0.2.2")
+    }
+
+    /**
+     * Normalizes a URL by ensuring a trailing slash.
+     */
+    fun normalizeUrl(url: String): String {
+        val trimmed = url.trim()
+        if (trimmed.isBlank()) return ""
+        return if (trimmed.endsWith("/")) trimmed else "$trimmed/"
+    }
+
+    /**
+     * Active backend base URL.
+     */
+    var activeBaseUrl: String = getDefaultBaseUrl()
+        set(value) {
+            field = normalizeUrl(value)
+        }
+
+    /**
+     * Returns true if the backend is configured for the active build variant.
+     */
+    fun isConfigured(): Boolean {
+        return if (isDebug) {
+            activeBaseUrl.isNotBlank()
+        } else {
+            isValidHostedUrl(activeBaseUrl)
+        }
+    }
 }

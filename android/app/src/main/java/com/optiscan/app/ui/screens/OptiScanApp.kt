@@ -270,6 +270,9 @@ fun OptiScanApp(
                     onTestSpeechRate = { rate ->
                         viewModel.testSpeechRate(rate)
                     },
+                    onTestConnection = { url, callback ->
+                        viewModel.testBackendConnection(url, callback)
+                    },
                     onBackClick = { viewModel.navigateBack() },
                     onAnnounceSettings = {
                         viewModel.speak("${strings.settingsTitle}. ${strings.settingsSubtitle}")

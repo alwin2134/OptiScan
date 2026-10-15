@@ -18,8 +18,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -28,6 +33,10 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -51,17 +60,20 @@ import com.optiscan.app.ui.theme.SurfaceCard
 import com.optiscan.app.ui.theme.SurfaceDarkCharcoal
 import com.optiscan.app.ui.theme.TextLightGrey
 import com.optiscan.app.ui.theme.TextWhite
+import com.optiscan.app.utils.NetworkConfig
 import kotlin.math.roundToInt
 
 /**
  * Screen I: Settings & Accessibility Preferences
- * Configures language, speech rate, voice feedback toggle, haptics, and text scale.
+ * Configures language, speech rate, voice feedback toggle, haptics, text scale,
+ * backend server URL, and offline mock demonstration mode.
  */
 @Composable
 fun SettingsScreen(
     settings: AppSettings,
     onUpdateSettings: (AppSettings) -> Unit,
     onTestSpeechRate: (Float) -> Unit,
+    onTestConnection: ((String, (Boolean) -> Unit) -> Unit)? = null,
     onBackClick: () -> Unit,
     onAnnounceSettings: () -> Unit,
     modifier: Modifier = Modifier
@@ -152,7 +164,7 @@ fun SettingsScreen(
                 }
             )
 
-            // Section 2: Speech Rate Slider
+            // Section 3: Speech Rate Slider
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -276,7 +288,107 @@ fun SettingsScreen(
                 }
             )
 
-            // Section 6: Offline Mock Mode
+            // Section 6: Backend Server Configuration
+            var enteredUrl by remember(settings.customBackendUrl) {
+                mutableStateOf(settings.customBackendUrl.ifBlank { NetworkConfig.activeBaseUrl })
+            }
+            var connectionStatus by remember { mutableStateOf<Boolean?>(null) }
+            var isTestingConnection by remember { mutableStateOf(false) }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(SurfaceDarkCharcoal, RoundedCornerShape(16.dp))
+                    .border(1.5.dp, BorderSubtle, RoundedCornerShape(16.dp))
+                    .padding(18.dp)
+            ) {
+                Text(
+                    text = strings.serverConfigTitle,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = TextWhite
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Text(
+                    text = strings.serverConfigSubtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextLightGrey
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = enteredUrl,
+                    onValueChange = { enteredUrl = it },
+                    label = { Text(strings.serverUrlLabel, color = TextLightGrey) },
+                    placeholder = { Text(strings.serverUrlHint, color = TextLightGrey) },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = TextWhite,
+                        unfocusedTextColor = TextWhite,
+                        focusedBorderColor = ActionPrimaryBlue,
+                        unfocusedBorderColor = BorderSubtle,
+                        cursorColor = ActionPrimaryBlue
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics {
+                            this.contentDescription = "${strings.serverUrlLabel}: $enteredUrl"
+                        }
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OptiScanButton(
+                        text = strings.saveServerUrlButton,
+                        onClick = {
+                            val normalized = NetworkConfig.normalizeUrl(enteredUrl)
+                            onUpdateSettings(settings.copy(customBackendUrl = normalized))
+                        },
+                        variant = ButtonVariant.PRIMARY,
+                        minHeight = 48,
+                        bypassTripleTap = true,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    OptiScanButton(
+                        text = if (isTestingConnection) "..." else strings.testConnectionButton,
+                        onClick = {
+                            if (onTestConnection != null) {
+                                isTestingConnection = true
+                                val urlToTest = NetworkConfig.normalizeUrl(enteredUrl)
+                                onTestConnection(urlToTest) { success ->
+                                    isTestingConnection = false
+                                    connectionStatus = success
+                                }
+                            }
+                        },
+                        variant = ButtonVariant.SURFACE,
+                        minHeight = 48,
+                        bypassTripleTap = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                if (connectionStatus != null) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = if (connectionStatus == true) strings.connectionStatusConnected else strings.connectionStatusFailed,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (connectionStatus == true) ActionSecondaryGreen else MaterialTheme.colorScheme.error,
+                        modifier = Modifier.semantics {
+                            this.contentDescription = if (connectionStatus == true) strings.connectionStatusConnected else strings.connectionStatusFailed
+                        }
+                    )
+                }
+            }
+
+            // Section 7: Offline Mock Mode
             SettingToggleCard(
                 title = strings.offlineMockTitle,
                 description = strings.offlineMockSubtitle,
@@ -286,7 +398,7 @@ fun SettingsScreen(
                 }
             )
 
-            // Section 7: 3-Tap Accessible Navigation Toggle
+            // Section 8: 3-Tap Accessible Navigation Toggle
             val isHindi = settings.language == AppLanguage.HINDI
             SettingToggleCard(
                 title = if (isHindi) "3-टैप नेविगेशन (टच सुरक्षा)" else "3-Tap Navigation (Touch Protection)",
@@ -300,7 +412,7 @@ fun SettingsScreen(
                 }
             )
 
-            // Section 8: About & Version
+            // Section 9: About & Version
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -349,31 +461,31 @@ private fun SettingToggleCard(
     title: String,
     description: String,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    val stateDescription = if (checked) "Enabled" else "Disabled"
-    val accessibleDesc = "$title. $stateDescription. $description"
-
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .background(SurfaceDarkCharcoal, RoundedCornerShape(16.dp))
             .border(1.5.dp, BorderSubtle, RoundedCornerShape(16.dp))
             .padding(18.dp)
-            .semantics {
-                this.role = Role.Switch
-                this.contentDescription = accessibleDesc
+            .semantics(mergeDescendants = true) {
+                role = Role.Switch
+                contentDescription = "$title. $description. Currently ${if (checked) "enabled" else "disabled"}."
             }
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
                 color = TextWhite
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodyMedium,
@@ -381,19 +493,19 @@ private fun SettingToggleCard(
             )
         }
 
-        Spacer(modifier = Modifier.padding(horizontal = 8.dp))
+        Spacer(modifier = Modifier.width(16.dp))
 
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = TextWhite,
-                checkedTrackColor = ActionSecondaryGreen,
+                checkedTrackColor = ActionPrimaryBlue,
                 uncheckedThumbColor = TextLightGrey,
                 uncheckedTrackColor = SurfaceCard
             ),
             modifier = Modifier.semantics {
-                this.contentDescription = "$title toggle. Currently $stateDescription."
+                this.contentDescription = "$title toggle"
             }
         )
     }

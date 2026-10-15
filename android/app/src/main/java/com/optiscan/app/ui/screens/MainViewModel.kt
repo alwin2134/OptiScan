@@ -77,6 +77,9 @@ class MainViewModel(
         val loadedSettings = preferencesManager?.loadSettings() ?: AppSettings()
         _settings.value = loadedSettings
         repository.setMockMode(loadedSettings.useMockBackend)
+        if (loadedSettings.customBackendUrl.isNotBlank()) {
+            repository.updateBaseUrl(loadedSettings.customBackendUrl)
+        }
     }
 
     fun attachPreferencesManager(prefs: PreferencesManager) {
@@ -84,6 +87,9 @@ class MainViewModel(
         val loaded = prefs.loadSettings()
         _settings.value = loaded
         repository.setMockMode(loaded.useMockBackend)
+        if (loaded.customBackendUrl.isNotBlank()) {
+            repository.updateBaseUrl(loaded.customBackendUrl)
+        }
         applySettingsToTts(loaded)
     }
 
@@ -238,10 +244,14 @@ class MainViewModel(
     }
 
     fun updateSettings(newSettings: AppSettings) {
-        val previousLanguage = _settings.value.language
+        val previousSettings = _settings.value
+        val previousLanguage = previousSettings.language
         _settings.value = newSettings
         preferencesManager?.saveSettings(newSettings)
         repository.setMockMode(newSettings.useMockBackend)
+        if (newSettings.customBackendUrl != previousSettings.customBackendUrl && newSettings.customBackendUrl.isNotBlank()) {
+            repository.updateBaseUrl(newSettings.customBackendUrl)
+        }
         applySettingsToTts(newSettings)
 
         // Announce language change to user with immediate accessibility feedback
@@ -456,10 +466,17 @@ class MainViewModel(
         val lang = _settings.value.language
         val strings = AppStrings.get(lang)
 
-        if (isMock || bytes == null) {
+        if (isMock) {
             val answer = MockData.answerQuestion(query, contextContent, lang.code)
             onAnswerReceived(answer)
             speak(answer)
+            return
+        }
+
+        if (bytes == null) {
+            val noImageMsg = strings.noImageForQuestionNotice
+            onAnswerReceived(noImageMsg)
+            speak(noImageMsg)
             return
         }
 
@@ -514,6 +531,22 @@ class MainViewModel(
         ttsManager?.setSpeechRate(rate)
         val strings = AppStrings.get(_settings.value.language)
         speak(strings.testSpeechSentence)
+    }
+
+    fun testBackendConnection(url: String? = null, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            if (!url.isNullOrBlank()) {
+                repository.updateBaseUrl(url)
+            }
+            val isHealthy = repository.checkBackendHealth()
+            val strings = AppStrings.get(_settings.value.language)
+            if (isHealthy) {
+                speak(strings.connectionStatusConnected)
+            } else {
+                speak(strings.connectionStatusFailed)
+            }
+            onResult(isHealthy)
+        }
     }
 
     override fun onCleared() {

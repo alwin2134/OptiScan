@@ -24,6 +24,7 @@ class PreferencesManager(context: Context) {
         val textSizeScale = prefs.getFloat(KEY_TEXT_SIZE_SCALE, 1.0f)
         val useMockBackend = prefs.getBoolean(KEY_USE_MOCK_BACKEND, false)
         val tripleTapNavigation = prefs.getBoolean(KEY_TRIPLE_TAP_NAVIGATION, true)
+        val customBackendUrl = prefs.getString(KEY_CUSTOM_BACKEND_URL, "") ?: ""
 
         return AppSettings(
             speechRate = speechRate,
@@ -32,7 +33,8 @@ class PreferencesManager(context: Context) {
             textSizeScale = textSizeScale,
             useMockBackend = useMockBackend,
             tripleTapNavigationEnabled = tripleTapNavigation,
-            language = AppLanguage.fromCode(langCode)
+            language = AppLanguage.fromCode(langCode),
+            customBackendUrl = customBackendUrl
         )
     }
 
@@ -48,6 +50,7 @@ class PreferencesManager(context: Context) {
             .putFloat(KEY_TEXT_SIZE_SCALE, settings.textSizeScale)
             .putBoolean(KEY_USE_MOCK_BACKEND, settings.useMockBackend)
             .putBoolean(KEY_TRIPLE_TAP_NAVIGATION, settings.tripleTapNavigationEnabled)
+            .putString(KEY_CUSTOM_BACKEND_URL, settings.customBackendUrl)
             .apply()
     }
 
@@ -66,6 +69,20 @@ class PreferencesManager(context: Context) {
         return AppLanguage.fromCode(code)
     }
 
+    /**
+     * Quick setter for custom backend server URL.
+     */
+    fun setCustomBackendUrl(url: String) {
+        prefs.edit().putString(KEY_CUSTOM_BACKEND_URL, url.trim()).apply()
+    }
+
+    /**
+     * Retrieve current custom backend server URL.
+     */
+    fun getCustomBackendUrl(): String {
+        return prefs.getString(KEY_CUSTOM_BACKEND_URL, "") ?: ""
+    }
+
     companion object {
         const val PREFS_NAME = "optiscan_preferences"
         const val KEY_LANGUAGE = "key_app_language"
@@ -75,5 +92,6 @@ class PreferencesManager(context: Context) {
         const val KEY_TEXT_SIZE_SCALE = "key_text_size_scale"
         const val KEY_USE_MOCK_BACKEND = "key_use_mock_backend"
         const val KEY_TRIPLE_TAP_NAVIGATION = "key_triple_tap_navigation"
+        const val KEY_CUSTOM_BACKEND_URL = "key_custom_backend_url"
     }
 }

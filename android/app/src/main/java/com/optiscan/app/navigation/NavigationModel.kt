@@ -68,7 +68,8 @@ data class AppSettings(
     val textSizeScale: Float = 1.0f,
     val useMockBackend: Boolean = false,
     val tripleTapNavigationEnabled: Boolean = true,
-    val language: AppLanguage = AppLanguage.ENGLISH
+    val language: AppLanguage = AppLanguage.ENGLISH,
+    val customBackendUrl: String = ""
 ) {
     val textSizeLabel: String
         get() = when {

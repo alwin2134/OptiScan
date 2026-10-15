@@ -10,6 +10,7 @@ import com.optiscan.app.navigation.AppLanguage
 import com.optiscan.app.navigation.AppSettings
 import com.optiscan.app.navigation.ScanTask
 import com.optiscan.app.navigation.Screen
+import com.optiscan.app.ui.localization.AppStrings
 import com.optiscan.app.ui.screens.MainViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -68,6 +69,9 @@ class FakeScanRepository : ScanRepository {
         return onDeviceOcrResult ?: Result.success("Amoxicillin 500mg - Take one capsule daily")
     }
 
+    var activeUrl: String = "http://10.0.2.2:8000/"
+    var configured: Boolean = true
+
     override suspend fun checkBackendHealth(): Boolean = true
 
     override fun setMockMode(enabled: Boolean) {
@@ -75,6 +79,14 @@ class FakeScanRepository : ScanRepository {
     }
 
     override fun isMockMode(): Boolean = isMock
+
+    override fun updateBaseUrl(newUrl: String) {
+        activeUrl = newUrl
+    }
+
+    override fun getBaseUrl(): String = activeUrl
+
+    override fun isConfigured(): Boolean = configured
 }
 
 /**
@@ -390,5 +402,53 @@ class MainViewModelIntegrationTest {
         viewModel.navigateTo(Screen.Camera(ScanTask.READ_TEXT))
         // Speech must be stopped
         assertFalse(viewModel.isSpeaking.value)
+    }
+
+    @Test
+    fun testAskQuestionWhenNoImageCapturedReturnsHonestNoticeAndNeverMocks() = runTest(testDispatcher) {
+        // Ensure no image is captured and mock mode is false
+        viewModel.setCapturedImage(null, null)
+        fakeRepository.setMockMode(false)
+
+        var resultAnswer: String? = null
+        viewModel.askQuestion(
+            query = "Where is the door?",
+            contextContent = null
+        ) { answer ->
+            resultAnswer = answer
+        }
+
+        advanceUntilIdle()
+        assertNotNull(resultAnswer)
+        assertEquals("No image available to answer questions about. Please capture a photo first.", resultAnswer)
+        assertFalse("Must never return canned mock room descriptions when no image exists", resultAnswer!!.contains("doors on both sides"))
+    }
+
+    @Test
+    fun testServerConfigurationUpdatesRepositoryUrl() = runTest(testDispatcher) {
+        val testUrl = "https://api.optiscan.example.com/"
+        viewModel.updateSettings(AppSettings(customBackendUrl = testUrl))
+
+        assertEquals(testUrl, fakeRepository.activeUrl)
+    }
+
+    @Test
+    fun testOfflinePreservesOnDeviceOcrWhenCloudFails() = runTest(testDispatcher) {
+        val sampleBitmap = org.mockito.Mockito.mock(Bitmap::class.java)
+        viewModel.setCapturedBitmap(sampleBitmap)
+
+        fakeRepository.onDeviceOcrResult = Result.success("Aspirin 81mg - Daily Dose")
+        fakeRepository.analyzeResult = Result.failure(Exception("Network unreachable"))
+
+        viewModel.analyzeCapturedImage(ScanTask.READ_TEXT, sampleBytes)
+        advanceUntilIdle()
+
+        // Screen must arrive at ReadTextResult with on-device text preserved
+        val currentScreen = viewModel.currentScreen.value
+        assertTrue("Must navigate to ReadTextResult on offline fallback", currentScreen is Screen.ReadTextResult)
+        val textResult = currentScreen as Screen.ReadTextResult
+        assertEquals("Aspirin 81mg - Daily Dose", textResult.text)
+        assertFalse(textResult.isLiveResult)
+        assertEquals(AppStrings.English.onDeviceFallbackNotice, textResult.recaptureReason)
     }
 }

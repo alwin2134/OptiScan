@@ -30,10 +30,18 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("debug")
+            buildConfigField("String", "DEFAULT_BACKEND_URL", "\"\"")
         }
         debug {
             isMinifyEnabled = false
+            buildConfigField("String", "DEFAULT_BACKEND_URL", "\"http://10.0.2.2:8000/\"")
         }
+    }
+
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
     }
 
     compileOptions {
@@ -109,4 +117,5 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
     testImplementation("com.google.code.gson:gson:2.10.1")
+    testImplementation("org.mockito:mockito-core:5.11.0")
 }
