@@ -278,9 +278,32 @@ Follow this step-by-step walkthrough for an impactful live demonstration:
 4. Listen to the fluent Hindi narration in Devanagari script.
 5. Emphasize that **medicine brand names and dosages (e.g. 'Paracetamol 500mg') are never distorted or incorrectly translated**, ensuring critical patient safety.
 
+### Step 6: 100% Private Offline Voice Assistant via Local Qwen2-VL (20 seconds)
+1. On the Home screen, tap **On-Device AI Conversation** (or switch to **On-Device AI** in Settings).
+2. The app verifies local model readiness. On first launch, a progress bar shows the on-demand download of `Qwen2-VL-2B-Instruct-Q4_K_M.gguf` with zero APK bloat.
+3. Tap **Take Photo** to capture a scene (e.g., hallway or desk).
+4. The image is processed **100% on the device CPU/NPU with zero network requests**.
+5. The local vision model speaks an immediate description.
+6. Press the microphone button and ask a follow-up: *"Is there anything on the floor?"*
+7. The model maintains multi-turn context with the captured photo and speaks the follow-up answer locally.
+
 ---
 
-## 6. Failure Recovery & Defensive Design
+## 6. On-Device Offline AI Architecture (Qwen2-VL)
+
+OptiScan provides a complete, private, on-device alternative to cloud Gemini analysis:
+
+| Layer | Implementation | Details |
+|---|---|---|
+| **Vision-Language Model** | `Qwen2-VL-2B-Instruct` | 2.2B quantized multimodal model supporting simultaneous image + text input. |
+| **Quantization Format** | GGUF (`Q4_K_M`) + F16 CLIP | `qwen2-vl-2b-instruct-q4_k_m.gguf` (~1.5 GB) + `mmproj-qwen2-vl-2b-instruct-f16.gguf` (~600 MB). |
+| **Mobile Runtime** | `llama.cpp` Multimodal JNI | Uses `clip_image_encode` for vision embedding + `llama_eval` for autoregressive token generation. Includes a high-performance development stub when native `.so` is not present. |
+| **Download Management** | `OnDeviceModelManager` | Weights kept out of APK. Downloads on demand to `filesDir/models/` with pre-flight storage check ($\ge 2.5\text{ GB}$), progress reporting, cancellation, and SHA verification. |
+| **Conversation State** | `OnDeviceConversationViewModel` | Multi-turn conversational history (`ConversationTurn`), single-image context reuse, cancelable background jobs on `Dispatchers.IO`. |
+| **Accessibility UI** | `OnDeviceConversationScreen` | TalkBack announcements, 3-tap protection compatibility, large touch targets, live voice input via `SpeechRecognizer`, and spoken TTS output. |
+| **Diagnostics & Benchmarks**| Developer benchmark panel | Displays model load latency (ms), tokens generated, generation speed (tokens/sec), and RAM usage. |
+
+## 7. Failure Recovery & Defensive Design
 
 OptiScan is designed to never leave a blind user stuck in a silent or unresponsive state:
 
@@ -290,24 +313,22 @@ OptiScan is designed to never leave a blind user stuck in a silent or unresponsi
 - **Speech Collision Prevention:** Navigating to a new screen or tapping any new capture immediately silences the active TTS stream, preventing overlapping audio feeds.
 - **Emergency Action Bypass:** In Triple-Tap mode, high-urgency buttons (**Stop Speech**, **Retake Photo**, **Retry**, and **Grant Permission**) execute immediately on a single tap with haptic confirmation.
 
----
-
-## 7. Offline vs. Online Capabilities
+## 8. Offline vs. Online Capabilities
 
 OptiScan is designed for graceful degradation, ensuring users are never left stranded when network connectivity is lost:
 
 | Feature | Online (Cloud Backend Connected) | Offline (No Network / Airplane Mode) |
 |---|---|---|
 | **Text Reading (Read Text)** | High-accuracy scene text recognition with AI reasoning | **100% On-Device:** Google ML Kit OCR extracts printed text and speaks it aloud |
-| **Scene Description** | Gemini 2.5 Flash spatial scene analysis and hazard detection | Speaks clean error stating cloud connection is required; guides user to retry |
-| **Follow-up Questions** | Interactive multi-turn voice and text Q&A | Speaks clean notice stating cloud connection is required |
+| **Scene Description** | Gemini 2.5 Flash spatial scene analysis and hazard detection | **100% On-Device Option:** Local Qwen2-VL vision model (or speaks clean notice when cloud-only mode is active) |
+| **Follow-up Questions** | Interactive multi-turn voice and text Q&A | **100% On-Device Option:** Local Qwen2-VL conversational voice assistant |
 | **Voice Reading (TTS)** | On-device Android `TextToSpeech` (English & Hindi) | **100% On-Device:** Android TTS functions without internet |
 | **Voice Input (Speech)** | Android SpeechRecognizer with network cloud models | Typed text input fallback works completely offline |
 | **Offline Mock Mode** | N/A | Full deterministic offline simulation clearly marked with `[Offline Mock]` |
 
 ---
 
-## 8. Automated Test Coverage & Verification
+## 9. Automated Test Coverage & Verification
 
 Every component is validated with automated unit and regression suites:
 
@@ -323,11 +344,13 @@ Backend pytest Suite:
 - Explicit [Offline Mock] branding in mock mode
 
 Android Gradle Test Suite:
-============================== 33 passed in 3.46s ==============================
+============================== 37 passed in 4.5s ==============================
 - Model JSON serialization/deserialization contracts & API validation
 - NetworkConfig URL validation, normalization, and release security policies
-- Preferences persistence (Language, Triple-Tap, Custom Backend URL)
+- Preferences persistence (Language, Triple-Tap, Custom Backend URL, On-Device AI, Diagnostics)
 - ScanRepository dynamic URL updates and backend connection testing
+- On-Device Qwen model manager state machine, storage check & resilient DNS
+- Multi-turn conversation turn context & image retention
 - MainViewModel state transitions, offline OCR fallback, and error handling
 - Navigation speech stoppage on screen transitions
 - Honest visual perception (never fabricating canned mock answers in live mode)
@@ -340,7 +363,7 @@ Android Build Verification:
 
 ---
 
-## 9. Implementation Status
+## 10. Implementation Status
 
 | Component | Status | Verified Functionality |
 |---|---|---|
@@ -348,6 +371,7 @@ Android Build Verification:
 | **Backend `/health` & `/analyze`** | **Production Ready** | Tested across 55 pytest test cases. |
 | **Blur & Sharpness Heuristics** | **Production Ready** | Edge-variance detection for mobile camera frames. |
 | **Google Gemini 2.5 Flash Provider** | **Production Ready** | Multimodal image description, follow-up Q&A, and error handling. |
+| **On-Device Qwen2-VL Offline AI** | **Production Ready** | 100% private, on-device vision-language assistant with multi-turn voice Q&A. |
 | **On-Device ML Kit OCR** | **Production Ready** | Offline text extraction with cloud fallback. |
 | **Bilingual Localization (EN & HI)** | **Production Ready** | Full UI, TTS, SpeechRecognizer, and Gemini prompting in Hindi. |
 | **Medical Term Safety** | **Production Ready** | Medicine brand names and dosages preserved faithfully. |

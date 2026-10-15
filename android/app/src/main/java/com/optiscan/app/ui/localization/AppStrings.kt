@@ -173,7 +173,16 @@ data class AppStrings(
     val noImageForQuestionNotice: String,
     val serverNotConfiguredMessage: String,
     val aboutTitle: String,
-    val aboutDescription: String
+    val aboutDescription: String,
+
+    // On-Device AI (Qwen2-VL)
+    val onDeviceAiSettingsTitle: String,
+    val onDeviceAiSettingsSubtitle: String,
+    val onDeviceAiDiagnosticsTitle: String,
+    val onDeviceAiDiagnosticsSubtitle: String,
+    val onDeviceAiModeButton: String,
+    val onDeviceAiModeSubtitle: String,
+    val onDeviceAiPrivacyBadge: String
 ) {
     fun taskTitle(task: ScanTask): String = when (task) {
         ScanTask.READ_TEXT -> readTextTitle
@@ -353,7 +362,16 @@ data class AppStrings(
             noImageForQuestionNotice = "No image available to answer questions about. Please capture a photo first.",
             serverNotConfiguredMessage = "Hosted backend URL is not configured. Please enter a valid server URL in Settings or enable Offline Mock Mode.",
             aboutTitle = "About OptiScan",
-            aboutDescription = "Version 1.0.0 (Hackathon MVP)\nDesigned for blind and low-vision accessibility. Supports TalkBack screen reading, large touch targets, and high-contrast color standards."
+            aboutDescription = "Version 1.0.0 (Hackathon MVP)\nDesigned for blind and low-vision accessibility. Supports TalkBack screen reading, large touch targets, and high-contrast color standards.",
+
+            // On-Device AI
+            onDeviceAiSettingsTitle = "On-Device AI Mode (Qwen2-VL)",
+            onDeviceAiSettingsSubtitle = "Use a local Qwen2-VL vision model on your device for fully private, offline image analysis and voice conversation. Requires ~1.8 GB storage.",
+            onDeviceAiDiagnosticsTitle = "Show AI Diagnostics",
+            onDeviceAiDiagnosticsSubtitle = "Display model load time and inference time for developer benchmarking.",
+            onDeviceAiModeButton = "On-Device AI Conversation",
+            onDeviceAiModeSubtitle = "Private • Offline • Qwen2-VL",
+            onDeviceAiPrivacyBadge = "🔒 On-device: your images never leave this phone"
         )
 
         val Hindi = AppStrings(
@@ -521,7 +539,16 @@ data class AppStrings(
             noImageForQuestionNotice = "प्रश्न का उत्तर देने के लिए कोई फोटो उपलब्ध नहीं है। कृपया पहले फोटो खींचें।",
             serverNotConfiguredMessage = "क्लाउड बैकएंड सर्वर कॉन्फ़िगर नहीं है। कृपया सेटिंग्स में सर्वर URL दर्ज करें या ऑफलाइन मॉक मोड सक्षम करें।",
             aboutTitle = "ऑप्टीस्कैन के बारे में",
-            aboutDescription = "संस्करण 1.0.0 (हैकथॉन MVP)\nदृष्टिबाधित और कम दृष्टि वाले उपयोगकर्ताओं के लिए डिज़ाइन किया गया।"
+            aboutDescription = "संस्करण 1.0.0 (हैकथॉन MVP)\nदृष्टिबाधित और कम दृष्टि वाले उपयोगकर्ताओं के लिए डिज़ाइन किया गया।",
+
+            // On-Device AI
+            onDeviceAiSettingsTitle = "ऑन-डिवाइस AI मोड (Qwen2-VL)",
+            onDeviceAiSettingsSubtitle = "पूरी तरह निजी और ऑफलाइन छवि विश्लेषण के लिए स्थानीय Qwen2-VL मॉडल उपयोग करें। ~1.8 GB संग्रहण आवश्यक।",
+            onDeviceAiDiagnosticsTitle = "AI डायग्नोस्टिक्स दिखाएं",
+            onDeviceAiDiagnosticsSubtitle = "डेवलपर बेंचमार्किंग के लिए मॉडल लोड समय और अनुमान समय प्रदर्शित करें।",
+            onDeviceAiModeButton = "ऑन-डिवाइस AI बातचीत",
+            onDeviceAiModeSubtitle = "निजी • ऑफलाइन • Qwen2-VL",
+            onDeviceAiPrivacyBadge = "🔒 ऑन-डिवाइस: आपकी छवियां इस फोन से बाहर नहीं जातीं"
         )
 
         fun get(language: AppLanguage): AppStrings = when (language) {

@@ -25,6 +25,8 @@ class PreferencesManager(context: Context) {
         val useMockBackend = prefs.getBoolean(KEY_USE_MOCK_BACKEND, false)
         val tripleTapNavigation = prefs.getBoolean(KEY_TRIPLE_TAP_NAVIGATION, true)
         val customBackendUrl = prefs.getString(KEY_CUSTOM_BACKEND_URL, "") ?: ""
+        val useOnDeviceAi = prefs.getBoolean(KEY_USE_ON_DEVICE_AI, false)
+        val showDiagnostics = prefs.getBoolean(KEY_SHOW_ON_DEVICE_DIAGNOSTICS, false)
 
         return AppSettings(
             speechRate = speechRate,
@@ -34,7 +36,9 @@ class PreferencesManager(context: Context) {
             useMockBackend = useMockBackend,
             tripleTapNavigationEnabled = tripleTapNavigation,
             language = AppLanguage.fromCode(langCode),
-            customBackendUrl = customBackendUrl
+            customBackendUrl = customBackendUrl,
+            useOnDeviceAi = useOnDeviceAi,
+            showOnDeviceDiagnostics = showDiagnostics
         )
     }
 
@@ -51,6 +55,8 @@ class PreferencesManager(context: Context) {
             .putBoolean(KEY_USE_MOCK_BACKEND, settings.useMockBackend)
             .putBoolean(KEY_TRIPLE_TAP_NAVIGATION, settings.tripleTapNavigationEnabled)
             .putString(KEY_CUSTOM_BACKEND_URL, settings.customBackendUrl)
+            .putBoolean(KEY_USE_ON_DEVICE_AI, settings.useOnDeviceAi)
+            .putBoolean(KEY_SHOW_ON_DEVICE_DIAGNOSTICS, settings.showOnDeviceDiagnostics)
             .apply()
     }
 
@@ -93,5 +99,7 @@ class PreferencesManager(context: Context) {
         const val KEY_USE_MOCK_BACKEND = "key_use_mock_backend"
         const val KEY_TRIPLE_TAP_NAVIGATION = "key_triple_tap_navigation"
         const val KEY_CUSTOM_BACKEND_URL = "key_custom_backend_url"
+        const val KEY_USE_ON_DEVICE_AI = "key_use_on_device_ai"
+        const val KEY_SHOW_ON_DEVICE_DIAGNOSTICS = "key_show_on_device_diagnostics"
     }
 }

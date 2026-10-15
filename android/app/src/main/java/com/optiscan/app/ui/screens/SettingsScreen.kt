@@ -76,6 +76,7 @@ fun SettingsScreen(
     onTestConnection: ((String, (Boolean) -> Unit) -> Unit)? = null,
     onBackClick: () -> Unit,
     onAnnounceSettings: () -> Unit,
+    onOpenOnDeviceConversation: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val strings = AppStrings.get(settings.language)
@@ -412,7 +413,105 @@ fun SettingsScreen(
                 }
             )
 
-            // Section 9: About & Version
+            // Section 9: On-Device AI (Qwen2-VL)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(SurfaceDarkCharcoal, RoundedCornerShape(16.dp))
+                    .border(1.5.dp, BorderSubtle, RoundedCornerShape(16.dp))
+                    .padding(18.dp),
+                verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    text = strings.onDeviceAiSettingsTitle,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = TextWhite
+                )
+                Text(
+                    text = strings.onDeviceAiSettingsSubtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextLightGrey
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                // Toggle: On-Device AI vs Cloud Gemini
+                Row(
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = if (settings.useOnDeviceAi)
+                            (if (isHindi) "ऑन-डिवाइस AI (चालू)" else "On-Device AI (Active)")
+                        else
+                            (if (isHindi) "क्लाउड Gemini (चालू)" else "Cloud Gemini (Active)"),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextWhite,
+                        modifier = Modifier.weight(1f)
+                    )
+                    androidx.compose.material3.Switch(
+                        checked = settings.useOnDeviceAi,
+                        onCheckedChange = { checked ->
+                            onUpdateSettings(settings.copy(useOnDeviceAi = checked))
+                        },
+                        colors = androidx.compose.material3.SwitchDefaults.colors(
+                            checkedThumbColor = TextWhite,
+                            checkedTrackColor = ActionSecondaryGreen,
+                            uncheckedThumbColor = TextLightGrey,
+                            uncheckedTrackColor = SurfaceCard
+                        ),
+                        modifier = Modifier.semantics {
+                            contentDescription = if (settings.useOnDeviceAi)
+                                "On-Device AI mode enabled. Tap to switch to Cloud Gemini."
+                            else
+                                "Cloud Gemini mode enabled. Tap to switch to On-Device AI."
+                        }
+                    )
+                }
+                // Toggle: Diagnostics display
+                Row(
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = strings.onDeviceAiDiagnosticsTitle,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextWhite
+                        )
+                        Text(
+                            text = strings.onDeviceAiDiagnosticsSubtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextLightGrey
+                        )
+                    }
+                    androidx.compose.material3.Switch(
+                        checked = settings.showOnDeviceDiagnostics,
+                        onCheckedChange = { checked ->
+                            onUpdateSettings(settings.copy(showOnDeviceDiagnostics = checked))
+                        },
+                        colors = androidx.compose.material3.SwitchDefaults.colors(
+                            checkedThumbColor = TextWhite,
+                            checkedTrackColor = ActionPrimaryBlue,
+                            uncheckedThumbColor = TextLightGrey,
+                            uncheckedTrackColor = SurfaceCard
+                        )
+                    )
+                }
+                // Open On-Device Conversation button
+                if (onOpenOnDeviceConversation != null) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    OptiScanButton(
+                        text = strings.onDeviceAiModeButton,
+                        onClick = onOpenOnDeviceConversation,
+                        variant = ButtonVariant.PRIMARY,
+                        contentDesc = strings.onDeviceAiModeButton,
+                        minHeight = 52
+                    )
+                }
+            }
+
+            // Section 10: About & Version
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
