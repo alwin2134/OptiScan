@@ -133,7 +133,8 @@ fun ProcessingScreen(
                         variant = ButtonVariant.PRIMARY,
                         icon = Icons.Default.Refresh,
                         contentDesc = "${strings.retry} button",
-                        minHeight = 56
+                        minHeight = 56,
+                        bypassTripleTap = true
                     )
 
                     OptiScanButton(
@@ -142,7 +143,8 @@ fun ProcessingScreen(
                         variant = ButtonVariant.SURFACE,
                         icon = Icons.Default.Close,
                         contentDesc = "${strings.returnToCamera} button",
-                        minHeight = 56
+                        minHeight = 56,
+                        bypassTripleTap = true
                     )
                 } else {
                     OptiScanButton(
@@ -151,7 +153,8 @@ fun ProcessingScreen(
                         variant = ButtonVariant.SURFACE,
                         icon = Icons.Default.Close,
                         contentDesc = "${strings.cancel} button",
-                        minHeight = 56
+                        minHeight = 56,
+                        bypassTripleTap = true
                     )
                 }
             }

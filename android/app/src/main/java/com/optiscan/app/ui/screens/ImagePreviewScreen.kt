@@ -51,11 +51,14 @@ import com.optiscan.app.ui.theme.TextWhite
 fun ImagePreviewScreen(
     task: ScanTask,
     bitmap: Bitmap?,
+    language: com.optiscan.app.navigation.AppLanguage = com.optiscan.app.navigation.AppLanguage.ENGLISH,
     onUsePhoto: () -> Unit,
     onRetakePhoto: () -> Unit,
     onAnnounce: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings = com.optiscan.app.ui.localization.AppStrings.get(language)
+
     LaunchedEffect(Unit) {
         onAnnounce()
     }
@@ -73,10 +76,10 @@ fun ImagePreviewScreen(
         ) {
             // Header
             ScreenTitle(
-                title = "Review Photo",
-                subtitle = "Check your capture for ${task.displayTitle}",
+                title = strings.previewTitle,
+                subtitle = "${strings.previewSubtitle} ${strings.taskTitle(task)}",
                 onBackClick = onRetakePhoto,
-                backContentDescription = "Retake photo and return to camera"
+                backContentDescription = strings.returnToPreviousScreen
             )
 
             // Captured Image Box
@@ -90,13 +93,13 @@ fun ImagePreviewScreen(
                     .background(SurfaceDarkCharcoal)
                     .border(2.dp, BorderSubtle, RoundedCornerShape(16.dp))
                     .semantics {
-                        this.contentDescription = "Captured photo ready for analysis."
+                        this.contentDescription = strings.photoCapturedCardTitle
                     }
             ) {
                 if (bitmap != null) {
                     Image(
                         bitmap = bitmap.asImageBitmap(),
-                        contentDescription = "Captured camera image",
+                        contentDescription = strings.photoCapturedCardTitle,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()
                     )
@@ -115,13 +118,13 @@ fun ImagePreviewScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "Photo Captured",
+                            text = strings.photoCapturedCardTitle,
                             style = MaterialTheme.typography.titleLarge,
                             color = TextWhite
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "Ready to proceed with ${task.displayTitle.lowercase()}.",
+                            text = strings.photoCapturedCardSubtitle,
                             style = MaterialTheme.typography.bodyMedium,
                             color = TextLightGrey
                         )
@@ -137,21 +140,22 @@ fun ImagePreviewScreen(
                     .padding(bottom = 12.dp)
             ) {
                 OptiScanButton(
-                    text = "Use This Photo",
+                    text = strings.useThisPhoto,
                     onClick = onUsePhoto,
                     variant = ButtonVariant.PRIMARY,
                     icon = Icons.Default.Check,
-                    contentDesc = "Use this photo button. Double-tap to start image analysis.",
+                    contentDesc = "${strings.useThisPhoto} button",
                     minHeight = 64
                 )
 
                 OptiScanButton(
-                    text = "Retake Photo",
+                    text = strings.retakePhoto,
                     onClick = onRetakePhoto,
                     variant = ButtonVariant.SURFACE,
                     icon = Icons.Default.Refresh,
-                    contentDesc = "Retake photo button. Double-tap to return to live camera viewfinder.",
-                    minHeight = 60
+                    contentDesc = "${strings.retakePhoto} button",
+                    minHeight = 60,
+                    bypassTripleTap = true
                 )
             }
         }

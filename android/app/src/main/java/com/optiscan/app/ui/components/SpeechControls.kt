@@ -19,7 +19,8 @@ fun SpeechControls(
     onReadAloud: () -> Unit,
     onStopSpeech: () -> Unit,
     modifier: Modifier = Modifier,
-    readAloudText: String = "Read Aloud"
+    readAloudText: String = "Read Aloud",
+    stopText: String = "Stop Reading"
 ) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -31,17 +32,19 @@ fun SpeechControls(
                 onClick = onReadAloud,
                 variant = ButtonVariant.SECONDARY,
                 icon = Icons.AutoMirrored.Filled.VolumeUp,
-                contentDesc = "Read text aloud using text to speech",
-                modifier = Modifier.weight(1f)
+                contentDesc = readAloudText,
+                modifier = Modifier.weight(1f),
+                bypassTripleTap = true
             )
         } else {
             OptiScanButton(
-                text = "Stop Reading",
+                text = stopText,
                 onClick = onStopSpeech,
                 variant = ButtonVariant.DANGER,
                 icon = Icons.Default.Stop,
-                contentDesc = "Stop active speech playback immediately",
-                modifier = Modifier.weight(1f)
+                contentDesc = stopText,
+                modifier = Modifier.weight(1f),
+                bypassTripleTap = true
             )
         }
     }

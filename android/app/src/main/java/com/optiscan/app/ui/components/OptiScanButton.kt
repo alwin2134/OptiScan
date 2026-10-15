@@ -53,7 +53,8 @@ fun OptiScanButton(
     icon: ImageVector? = null,
     contentDesc: String? = null,
     enabled: Boolean = true,
-    minHeight: Int = 60
+    minHeight: Int = 60,
+    bypassTripleTap: Boolean = false
 ) {
     val containerColor = when (variant) {
         ButtonVariant.PRIMARY -> ActionPrimaryBlue
@@ -75,6 +76,7 @@ fun OptiScanButton(
     val accessibleOnClick = rememberAccessibleTapHandler(
         description = description,
         enabled = enabled,
+        tripleTapMode = if (bypassTripleTap) false else LocalTripleTapModeEnabled.current,
         onAction = onClick
     )
 

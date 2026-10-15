@@ -57,6 +57,7 @@ Accepts an image captured from the camera, runs quality validation (size, format
 | `task` | string | **Yes** | Operation to perform. Allowed values: `describe_image`, `read_text`. |
 | `question` | string | No | Optional natural-language question about the scene or text (e.g. "Is the path clear?"). |
 | `ocr_text` | string | No | Optional pre-extracted text from client-side Google ML Kit OCR on Android. |
+| `language` | string | No | Optional target response language: `"en"` (default) or `"hi"` (Hindi in Devanagari script). |
 
 #### Responses
 

@@ -292,4 +292,13 @@ class PreferencesAndSpeechTest {
         assertFalse(en.hindiTtsFallbackNotice.isBlank())
         assertFalse(hi.hindiTtsFallbackNotice.isBlank())
     }
+
+    @Test
+    fun testMockDataExplicitOfflineMockBranding() {
+        val enAnswer = MockData.answerQuestion("Is the path clear?", null, "en")
+        val hiAnswer = MockData.answerQuestion("क्या रास्ता साफ है?", null, "hi")
+
+        assertTrue("English mock answer must have [Offline Mock] prefix", enAnswer.startsWith("[Offline Mock]"))
+        assertTrue("Hindi mock answer must have [ऑफलाइन मॉक] prefix", hiAnswer.startsWith("[ऑफलाइन मॉक]"))
+    }
 }

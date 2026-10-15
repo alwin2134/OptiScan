@@ -67,10 +67,12 @@ fun ReadTextResultScreen(
     var showCopyBanner by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        if (shouldRecapture) {
-            onAnnounceResult("${strings.recaptureAnnouncement} ${recaptureReason ?: strings.recaptureBlurryReason}")
-        } else {
-            onAnnounceResult(strings.textExtractedAnnouncement)
+        if (!isSpeaking) {
+            if (shouldRecapture) {
+                onAnnounceResult("${strings.recaptureAnnouncement} ${recaptureReason ?: strings.recaptureBlurryReason}")
+            } else {
+                onAnnounceResult(strings.textExtractedAnnouncement)
+            }
         }
     }
 
@@ -129,11 +131,17 @@ fun ReadTextResultScreen(
                     )
                 }
 
+                val notice = when {
+                    isLiveResult -> if (language == AppLanguage.HINDI) "Google Gemini द्वारा AI टेक्स्ट विश्लेषण" else "AI Text Extraction by Google Gemini"
+                    !recaptureReason.isNullOrBlank() -> recaptureReason
+                    else -> if (language == AppLanguage.HINDI) "[ऑफलाइन मॉक] डेमो आउटपुट" else "[Offline Mock] Simulated demonstration output"
+                }
+
                 // Text Result Card
                 ResultCard(
                     title = strings.documentTextCardTitle,
                     content = text,
-                    noticeText = if (isLiveResult) "AI Text Extraction by Google Gemini" else "Simulated demonstration output",
+                    noticeText = notice,
                     onCopyClick = {
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         val clip = ClipData.newPlainText("OptiScan Extracted Text", text)
@@ -147,7 +155,8 @@ fun ReadTextResultScreen(
                     isSpeaking = isSpeaking,
                     onReadAloud = { onReadAloud(text) },
                     onStopSpeech = onStopSpeech,
-                    readAloudText = strings.readAloudAllText
+                    readAloudText = strings.readAloudAllText,
+                    stopText = strings.stopSpeech
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))

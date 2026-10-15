@@ -68,6 +68,7 @@ import com.optiscan.app.ui.theme.TextWhite
 fun CameraScreen(
     task: ScanTask,
     hasCameraPermission: Boolean,
+    language: com.optiscan.app.navigation.AppLanguage = com.optiscan.app.navigation.AppLanguage.ENGLISH,
     onRequestCameraPermission: () -> Unit,
     onPreviewReady: (PreviewView) -> Unit,
     onCaptureClicked: () -> Unit,
@@ -75,6 +76,7 @@ fun CameraScreen(
     onInstructionSpoken: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings = com.optiscan.app.ui.localization.AppStrings.get(language)
     var flashEnabled by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -103,7 +105,7 @@ fun CameraScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.semantics {
                         this.role = Role.Button
-                        this.contentDescription = "Back to Home screen"
+                        this.contentDescription = strings.returnToPreviousScreen
                     }
                 ) {
                     IconButton(
@@ -118,7 +120,7 @@ fun CameraScreen(
                         )
                     }
                     Text(
-                        text = "Home",
+                        text = if (language == com.optiscan.app.navigation.AppLanguage.HINDI) "होम" else "Home",
                         style = MaterialTheme.typography.titleMedium,
                         color = TextWhite
                     )
@@ -126,12 +128,13 @@ fun CameraScreen(
 
                 // Flash Toggle Button
                 OptiScanButton(
-                    text = if (flashEnabled) "Flash ON" else "Flash OFF",
+                    text = if (flashEnabled) strings.flashOn else strings.flashOff,
                     onClick = { flashEnabled = !flashEnabled },
                     variant = if (flashEnabled) ButtonVariant.PRIMARY else ButtonVariant.SURFACE,
                     icon = if (flashEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
-                    contentDesc = if (flashEnabled) "Camera Flash is turned on. Tap to turn off." else "Camera Flash is turned off. Tap to turn on.",
+                    contentDesc = if (flashEnabled) "${strings.flashOn}. Tap to toggle." else "${strings.flashOff}. Tap to toggle.",
                     minHeight = 48,
+                    bypassTripleTap = true,
                     modifier = Modifier.width(150.dp)
                 )
             }
@@ -139,19 +142,29 @@ fun CameraScreen(
             // Task banner & instruction
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = task.displayTitle,
+                    text = strings.taskTitle(task),
                     style = MaterialTheme.typography.headlineMedium,
                     color = ActionPrimaryBlue
                 )
                 Text(
-                    text = "Point camera at object. Press volume button or tap Capture.",
+                    text = if (language == com.optiscan.app.navigation.AppLanguage.HINDI) {
+                        "कैमरा वस्तु की ओर करें। वॉल्यूम बटन दबाएं या कैप्चर पर टैप करें।"
+                    } else {
+                        "Point camera at object. Press volume button or tap Capture."
+                    },
                     style = MaterialTheme.typography.bodyLarge,
                     color = TextWhite
                 )
             }
 
+            val viewfinderDesc = if (language == com.optiscan.app.navigation.AppLanguage.HINDI) {
+                "कैमरा व्यूफ़ाइंडर। फ़ोटो खींचने के लिए वॉल्यूम बटन दबाएं या तीन बार टैप करें।"
+            } else {
+                "Camera Viewfinder. Double tap for guidance. Triple tap anywhere or press volume key to capture photo"
+            }
+
             val viewfinderTapHandler = rememberAccessibleTapHandler(
-                description = "Camera Viewfinder. Double tap for guidance. Triple tap anywhere or press volume key to capture photo",
+                description = viewfinderDesc,
                 onAction = onCaptureClicked
             )
 
@@ -172,7 +185,7 @@ fun CameraScreen(
                     )
                     .semantics {
                         this.role = Role.Button
-                        this.contentDescription = "Camera viewfinder. Press physical volume button or triple tap anywhere to capture photo."
+                        this.contentDescription = viewfinderDesc
                     }
             ) {
                 if (hasCameraPermission) {
@@ -190,18 +203,19 @@ fun CameraScreen(
                             .padding(24.dp)
                     ) {
                         StatusMessage(
-                            message = "Camera access is not yet granted. You can grant permission or test with simulated capture.",
+                            message = strings.cameraPermissionMessage,
                             level = StatusLevel.WARNING,
-                            title = "Camera Permission"
+                            title = strings.cameraPermissionTitle
                         )
 
                         Spacer(modifier = Modifier.height(20.dp))
 
                         OptiScanButton(
-                            text = "Grant Camera Permission",
+                            text = strings.grantCameraPermission,
                             onClick = onRequestCameraPermission,
                             variant = ButtonVariant.PRIMARY,
-                            contentDesc = "Request camera permission button"
+                            contentDesc = "${strings.grantCameraPermission} button",
+                            bypassTripleTap = true
                         )
                     }
                 }
@@ -215,11 +229,11 @@ fun CameraScreen(
                     .padding(bottom = 12.dp)
             ) {
                 OptiScanButton(
-                    text = "Capture Photo",
+                    text = strings.capturePhoto,
                     onClick = onCaptureClicked,
                     variant = ButtonVariant.PRIMARY,
                     icon = Icons.Default.Camera,
-                    contentDesc = "Capture photo button. Triple-tap or press physical volume key to take picture.",
+                    contentDesc = "${strings.capturePhoto} button",
                     minHeight = 72
                 )
             }

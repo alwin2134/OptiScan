@@ -360,4 +360,35 @@ class MainViewModelIntegrationTest {
         assertEquals("hi", fakeRepository.capturedLanguage)
         assertEquals("पानी के साथ हर 6 घंटे में 2 caplets लें।", resultAnswer)
     }
+
+    @Test
+    fun testAskQuestionNetworkFailureReturnsCleanErrorAndNeverFabricatesMock() = runTest(testDispatcher) {
+        viewModel.updateSettings(AppSettings(language = AppLanguage.ENGLISH))
+        viewModel.setCapturedImage(null, sampleBytes)
+
+        fakeRepository.analyzeResult = Result.failure(Exception("Connection timeout"))
+
+        var resultAnswer: String? = null
+        viewModel.askQuestion(
+            query = "What is the expiration date?",
+            contextContent = "Bottle label"
+        ) { answer ->
+            resultAnswer = answer
+        }
+
+        advanceUntilIdle()
+        assertNotNull(resultAnswer)
+        assertTrue("Error must explain connection/failure", resultAnswer!!.contains("Failed to get answer from AI service"))
+        assertFalse("Must never silently fabricate mock scene description on network failure", resultAnswer!!.contains("brightly lit indoor space"))
+    }
+
+    @Test
+    fun testNavigateToStopsSpeechOnNavigationToCameraOrHome() = runTest(testDispatcher) {
+        // Start speech
+        viewModel.speak("Reading long paragraph of text aloud...")
+        // Navigate to camera
+        viewModel.navigateTo(Screen.Camera(ScanTask.READ_TEXT))
+        // Speech must be stopped
+        assertFalse(viewModel.isSpeaking.value)
+    }
 }

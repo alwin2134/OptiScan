@@ -77,10 +77,13 @@ fun rememberAccessibleTapHandler(
                         2 -> {
                             // 2 Taps: Spoken readout explaining what the button does.
                             onHaptic(HapticType.DOUBLE_TICK)
-                            val announcement = if (description.contains("triple-tap", ignoreCase = true) ||
-                                description.contains("triple tap", ignoreCase = true)
-                            ) {
+                            val hasTripleTapPhrase = description.contains("triple-tap", ignoreCase = true) ||
+                                description.contains("triple tap", ignoreCase = true) ||
+                                description.contains("तीन बार", ignoreCase = true)
+                            val announcement = if (hasTripleTapPhrase) {
                                 description
+                            } else if (description.any { it in '\u0900'..'\u097F' }) {
+                                "$description. खोलने के लिए तीन बार टैप करें।"
                             } else {
                                 "$description. Triple tap to open."
                             }

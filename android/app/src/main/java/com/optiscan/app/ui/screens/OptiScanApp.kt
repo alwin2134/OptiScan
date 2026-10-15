@@ -113,6 +113,7 @@ fun OptiScanApp(
                 CameraScreen(
                     task = screen.task,
                     hasCameraPermission = hasCameraPermission,
+                    language = settings.language,
                     onRequestCameraPermission = onRequestCameraPermission,
                     onPreviewReady = onBindCamera,
                     onCaptureClicked = {
@@ -139,6 +140,7 @@ fun OptiScanApp(
                 ImagePreviewScreen(
                     task = screen.task,
                     bitmap = capturedBitmap,
+                    language = settings.language,
                     onUsePhoto = {
                         performHaptic()
                         viewModel.navigateTo(Screen.Processing(screen.task, screen.imageBytes))
@@ -201,7 +203,9 @@ fun OptiScanApp(
                         viewModel.navigateTo(Screen.Home, clearBackstack = true)
                     },
                     onAnnounceResult = { announcement ->
-                        viewModel.speak(announcement)
+                        if (!isSpeaking) {
+                            viewModel.speak(announcement)
+                        }
                     },
                     modifier = modifier.fillMaxSize()
                 )
@@ -230,7 +234,9 @@ fun OptiScanApp(
                         viewModel.navigateTo(Screen.Home, clearBackstack = true)
                     },
                     onAnnounceResult = { announcement ->
-                        viewModel.speak(announcement)
+                        if (!isSpeaking) {
+                            viewModel.speak(announcement)
+                        }
                     },
                     modifier = modifier.fillMaxSize()
                 )

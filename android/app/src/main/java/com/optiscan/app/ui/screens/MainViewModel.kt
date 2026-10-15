@@ -121,6 +121,9 @@ class MainViewModel(
 
     // Navigation methods
     fun navigateTo(screen: Screen, clearBackstack: Boolean = false) {
+        if (screen is Screen.Camera || screen is Screen.Home || screen is Screen.Settings || screen is Screen.ImagePreview) {
+            stopSpeech()
+        }
         if (clearBackstack) {
             backStack.clear()
         } else {
@@ -470,13 +473,21 @@ class MainViewModel(
                 language = lang.code
             )
             result.onSuccess { response ->
-                val answer = response.answer ?: MockData.answerQuestion(query, contextContent, lang.code)
+                val answer = response.answer ?: if (lang == AppLanguage.HINDI) {
+                    "इस प्रश्न के लिए कोई उत्तर नहीं मिल सका।"
+                } else {
+                    "No answer could be determined for this question."
+                }
                 onAnswerReceived(answer)
                 speak(answer)
-            }.onFailure {
-                val fallback = MockData.answerQuestion(query, contextContent, lang.code)
-                onAnswerReceived(fallback)
-                speak(fallback)
+            }.onFailure { ex ->
+                val errorMsg = if (lang == AppLanguage.HINDI) {
+                    "AI सेवा से उत्तर प्राप्त करने में विफलता: ${ex.message ?: "नेटवर्क समस्या"}।"
+                } else {
+                    "Failed to get answer from AI service: ${ex.message ?: "Network error"}."
+                }
+                onAnswerReceived(errorMsg)
+                speak(errorMsg)
             }
         }
     }

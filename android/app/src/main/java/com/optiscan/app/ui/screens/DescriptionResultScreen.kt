@@ -53,10 +53,12 @@ fun DescriptionResultScreen(
     val strings = AppStrings.get(language)
 
     LaunchedEffect(Unit) {
-        if (shouldRecapture) {
-            onAnnounceResult("${strings.recaptureAnnouncement} ${recaptureReason ?: strings.recaptureBlurryReason}")
-        } else {
-            onAnnounceResult(strings.sceneDescriptionAnnouncement)
+        if (!isSpeaking) {
+            if (shouldRecapture) {
+                onAnnounceResult("${strings.recaptureAnnouncement} ${recaptureReason ?: strings.recaptureBlurryReason}")
+            } else {
+                onAnnounceResult(strings.sceneDescriptionAnnouncement)
+            }
         }
     }
 
@@ -106,11 +108,17 @@ fun DescriptionResultScreen(
                     contentDesc = strings.backToHome
                 )
             } else {
+                val notice = if (isLiveResult) {
+                    if (language == AppLanguage.HINDI) "Google Gemini द्वारा AI दृश्य विश्लेषण" else "AI Scene Analysis by Google Gemini"
+                } else {
+                    if (language == AppLanguage.HINDI) "[ऑफलाइन मॉक] डेमो आउटपुट" else "[Offline Mock] Simulated demonstration output"
+                }
+
                 // Result Card
                 ResultCard(
                     title = strings.surroundingsCardTitle,
                     content = description,
-                    noticeText = if (isLiveResult) "AI Scene Analysis by Google Gemini" else "Simulated demonstration output"
+                    noticeText = notice
                 )
 
                 // Speech Controls
@@ -118,7 +126,8 @@ fun DescriptionResultScreen(
                     isSpeaking = isSpeaking,
                     onReadAloud = { onReadAloud(description) },
                     onStopSpeech = onStopSpeech,
-                    readAloudText = strings.readAloudDescription
+                    readAloudText = strings.readAloudDescription,
+                    stopText = strings.stopSpeech
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))

@@ -43,8 +43,9 @@ object MockData {
      */
     fun answerQuestion(question: String, contextText: String? = null, language: String = "en"): String {
         val isHindi = language.equals("hi", ignoreCase = true)
+        val prefix = if (isHindi) "[ऑफलाइन मॉक] " else "[Offline Mock] "
         val q = question.lowercase().trim()
-        return when {
+        val rawAnswer = when {
             q.contains("expire") || q.contains("expiration") || q.contains("date") || q.contains("समाप्त") || q.contains("तारीख") -> {
                 if (isHindi) {
                     "निचले कोने पर छपी समाप्ति तिथि November 2028 (Lot 9342B-01) है।"
@@ -96,5 +97,6 @@ object MockData {
                 }
             }
         }
+        return "$prefix$rawAnswer"
     }
 }
