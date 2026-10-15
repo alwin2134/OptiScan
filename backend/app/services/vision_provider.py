@@ -427,53 +427,66 @@ class GeminiVisionProvider(VisionProvider):
             "Content-Type": "application/json",
         }
 
-        try:
-            async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
-                response = await client.post(
-                    self.endpoint_url,
-                    headers=headers,
-                    json=payload,
-                )
+        models_to_try = [self.model_name]
+        for fallback in ["gemini-3.5-flash", "gemini-3-flash-preview", "gemini-flash-lite-latest"]:
+            if fallback not in models_to_try:
+                models_to_try.append(fallback)
 
-            if response.status_code != 200:
-                self._handle_upstream_error(response)
+        last_error = None
+        for model in models_to_try:
+            endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+            try:
+                async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
+                    response = await client.post(
+                        endpoint,
+                        headers=headers,
+                        json=payload,
+                    )
 
-            data = response.json()
+                if response.status_code == 200:
+                    data = response.json()
 
-            # Inspect safety block on prompt level
-            prompt_feedback = data.get("promptFeedback", {})
-            if prompt_feedback.get("blockReason"):
-                block_reason = prompt_feedback.get("blockReason")
-                logger.warning("Gemini prompt blocked: %s", block_reason)
-                raise VisionProviderError(f"Image analysis was blocked by safety policy ({block_reason}).")
+                    # Inspect safety block on prompt level
+                    prompt_feedback = data.get("promptFeedback", {})
+                    if prompt_feedback.get("blockReason"):
+                        block_reason = prompt_feedback.get("blockReason")
+                        logger.warning("Gemini prompt blocked on %s: %s", model, block_reason)
+                        raise VisionProviderError(f"Image analysis was blocked by safety policy ({block_reason}).")
 
-            candidates = data.get("candidates", [])
-            if not candidates:
-                raise VisionProviderError("Gemini API returned no analysis candidates.")
+                    candidates = data.get("candidates", [])
+                    if not candidates:
+                        raise VisionProviderError("Gemini API returned no analysis candidates.")
 
-            first_candidate = candidates[0]
-            finish_reason = first_candidate.get("finishReason", "")
-            if finish_reason == "SAFETY":
-                raise VisionProviderError("Image description was blocked by content safety filters.")
+                    first_candidate = candidates[0]
+                    finish_reason = first_candidate.get("finishReason", "")
+                    if finish_reason == "SAFETY":
+                        raise VisionProviderError("Image description was blocked by content safety filters.")
 
-            content_parts = first_candidate.get("content", {}).get("parts", [])
-            answer = "".join(p.get("text", "") for p in content_parts).strip()
+                    content_parts = first_candidate.get("content", {}).get("parts", [])
+                    answer = "".join(p.get("text", "") for p in content_parts).strip()
 
-            if not answer:
-                raise VisionProviderError("Gemini API returned an empty description.")
+                    if not answer:
+                        raise VisionProviderError("Gemini API returned an empty description.")
 
-            return answer
-        except httpx.TimeoutException as e:
-            logger.error("Timeout connecting to Gemini API (%s seconds)", self.timeout_seconds)
-            raise VisionProviderError("Vision provider timed out while analyzing the image.") from e
-        except httpx.NetworkError as e:
-            logger.error("Network error connecting to Gemini API: %s", str(e))
-            raise VisionProviderError("Network connection error reaching vision AI service.") from e
-        except VisionProviderError:
-            raise
-        except Exception as e:
-            logger.error("Unexpected error during Gemini API call: %s", str(e))
-            raise VisionProviderError(f"Vision provider error: {str(e)}") from e
+                    return answer
+
+                logger.warning("Model %s returned HTTP %d; trying fallback model...", model, response.status_code)
+                if model == models_to_try[-1]:
+                    self._handle_upstream_error(response)
+            except (httpx.TimeoutException, httpx.NetworkError) as e:
+                logger.warning("Network/Timeout with model %s (%s); trying fallback model...", model, str(e))
+                last_error = e
+                continue
+            except VisionProviderError:
+                raise
+            except Exception as e:
+                logger.warning("Error with model %s (%s); trying fallback model...", model, str(e))
+                last_error = e
+                continue
+
+        if last_error:
+            raise VisionProviderError("Vision provider timed out or was temporarily unavailable. Please try again.") from last_error
+        raise VisionProviderError("Vision AI provider failed to generate a response.")
 
     def _handle_upstream_error(self, response: httpx.Response) -> None:
         """Parse upstream error response and raise tailored VisionProviderError without exposing keys."""
