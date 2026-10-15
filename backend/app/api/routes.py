@@ -6,9 +6,9 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from fastapi.responses import JSONResponse
 
 from app.core.config import Settings, get_settings
-from app.schemas.analysis import AnalysisResponse, HealthResponse, StatusType, TaskType
+from app.schemas.analysis import AnalysisResponse, HealthResponse, OcrAnalysisRequest, StatusType, TaskType
 from app.services.image_validation import ImageValidationService, ValidationResult
-from app.services.vision_provider import VisionProvider, get_vision_provider
+from app.services.vision_provider import VisionProvider, VisionProviderError, get_vision_provider
 
 logger = logging.getLogger("optiscan.api")
 router = APIRouter()
@@ -56,12 +56,17 @@ async def analyze_image(
     ),
     question: Optional[str] = Form(
         default=None,
-        description="Optional question about the scene for interactive assistance.",
+        description="Optional question about the scene or text for interactive assistance.",
     ),
+    ocr_text: Optional[str] = Form(
+        default=None,
+        description="Optional client-side text extracted on Android via Google ML Kit.",
+    ),
+    settings: Settings = Depends(get_settings),
     validation_service: ImageValidationService = Depends(get_validation_service),
     vision_provider: VisionProvider = Depends(get_provider),
 ) -> AnalysisResponse:
-    """Validate image quality and dispatch to the vision provider."""
+    """Validate image quality and dispatch to the configured vision provider."""
     # 1. Validate task
     normalized_task = task.strip().lower()
     valid_tasks = {TaskType.DESCRIBE_IMAGE.value, TaskType.READ_TEXT.value}
@@ -78,9 +83,13 @@ async def analyze_image(
             ).model_dump(),
         )
 
-    # 2. Read image bytes
+    # 2. Read image bytes in bounded chunks to prevent out-of-memory on oversized uploads
     try:
-        image_bytes = await image.read()
+        image_bytes, is_oversized = await validation_service.read_bounded_bytes(
+            image,
+            max_bytes=settings.max_upload_size_bytes,
+            chunk_size=settings.chunk_read_size_bytes,
+        )
     except Exception as e:
         logger.error("Failed to read uploaded image bytes: %s", str(e))
         return JSONResponse(
@@ -94,12 +103,24 @@ async def analyze_image(
             ).model_dump(),
         )
 
+    if is_oversized:
+        max_mb = settings.max_upload_size_bytes / (1024 * 1024)
+        logger.warning("Upload exceeds max size of %s MB", max_mb)
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content=AnalysisResponse(
+                status=StatusType.ERROR.value,
+                task=normalized_task,
+                answer=None,
+                should_recapture=True,
+                reason=f"Image file exceeds maximum allowed size of {max_mb:.1f} MB.",
+            ).model_dump(),
+        )
+
     # 3. Validate image dimensions, format, and blur
     val_result: ValidationResult = validation_service.validate(image_bytes)
 
     if not val_result.is_valid:
-        # If it's a decodable image that failed quality/blur checks, mark as recapture (HTTP 200)
-        # Otherwise, if corrupt, unsupported, or empty payload, mark as error (HTTP 400)
         if val_result.format and val_result.width > 0:
             status_value = StatusType.RECAPTURE.value
             http_code = status.HTTP_200_OK
@@ -124,15 +145,31 @@ async def analyze_image(
             ).model_dump(),
         )
 
-    # 4. Dispatch to Vision Provider
+    # 4. Dispatch to Vision Provider safely
     try:
         if normalized_task == TaskType.DESCRIBE_IMAGE.value:
             response = await vision_provider.describe_image(image_bytes, question=question)
         else:
-            response = await vision_provider.read_text(image_bytes)
+            response = await vision_provider.process_ocr(
+                image_bytes,
+                ocr_text=ocr_text,
+                question=question,
+            )
         return response
+    except VisionProviderError as e:
+        logger.error("Vision provider failure: %s", str(e))
+        return JSONResponse(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            content=AnalysisResponse(
+                status=StatusType.ERROR.value,
+                task=normalized_task,
+                answer=None,
+                should_recapture=False,
+                reason="Vision AI provider failed or timed out. Please try again.",
+            ).model_dump(),
+        )
     except Exception as e:
-        logger.exception("Unexpected error in vision provider: %s", str(e))
+        logger.exception("Unexpected error during analysis: %s", str(e))
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=AnalysisResponse(
@@ -143,3 +180,21 @@ async def analyze_image(
                 reason="An unexpected internal error occurred while analyzing the image.",
             ).model_dump(),
         )
+
+
+@router.post(
+    "/analyze/ocr-text",
+    response_model=AnalysisResponse,
+    summary="Process ML Kit Extracted Text",
+    description="Processes text already extracted on Android by Google ML Kit, with optional question answering.",
+)
+async def process_ocr_text(
+    payload: OcrAnalysisRequest,
+    vision_provider: VisionProvider = Depends(get_provider),
+) -> AnalysisResponse:
+    """Process on-device OCR text without requiring an image upload."""
+    return await vision_provider.process_ocr(
+        image_bytes=b"",
+        ocr_text=payload.ocr_text,
+        question=payload.question,
+    )

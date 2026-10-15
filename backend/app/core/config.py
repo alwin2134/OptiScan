@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 from typing import List, Optional
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -25,20 +26,36 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
 
-    # CORS
-    cors_origins: List[str] = ["*"]
+    # CORS: configured for local development and Android emulator/device clients
+    cors_origins: List[str] = [
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "http://10.0.2.2:8000",
+        "http://localhost:3000",
+    ]
 
-    # Image upload constraints
-    max_upload_size_bytes: int = 10 * 1024 * 1024  # 10 MB limit
+    # Image upload constraints (8 MB limit as specified in requirements)
+    max_upload_size_bytes: int = 8 * 1024 * 1024  # 8 MB limit
+    chunk_read_size_bytes: int = 64 * 1024        # 64 KB chunk size for streaming upload reads
     allowed_image_formats: List[str] = ["JPEG", "PNG", "WEBP", "MPO"]
     min_image_dimension: int = 64
     blur_threshold: float = 12.0  # Sharpness variance threshold for recapture
 
-    # AI Vision Provider
-    # Supported: "mock", "gemini", "openai"
+    # AI Vision Provider Configuration
+    # Options: "mock", "gemini", "openai"
     vision_provider: str = "mock"
     vision_api_key: Optional[str] = None
-    vision_model_name: Optional[str] = None
+    vision_model_name: str = "gemini-1.5-flash"
+    vision_request_timeout_seconds: float = 15.0
+
+    @field_validator("vision_provider")
+    @classmethod
+    def validate_provider(cls, v: str) -> str:
+        allowed = {"mock", "gemini", "openai"}
+        val = v.lower().strip()
+        if val not in allowed:
+            raise ValueError(f"Unsupported vision_provider '{v}'. Allowed providers: {', '.join(sorted(allowed))}")
+        return val
 
 
 @lru_cache()

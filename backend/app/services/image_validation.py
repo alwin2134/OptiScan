@@ -4,6 +4,7 @@ import io
 import logging
 from dataclasses import dataclass
 from typing import Optional
+from fastapi import UploadFile
 from PIL import Image, ImageFilter, ImageStat
 
 from app.core.config import Settings, get_settings
@@ -28,6 +29,29 @@ class ImageValidationService:
 
     def __init__(self, settings: Optional[Settings] = None):
         self.settings = settings or get_settings()
+
+    @staticmethod
+    async def read_bounded_bytes(
+        upload_file: UploadFile,
+        max_bytes: int,
+        chunk_size: int = 64 * 1024,
+    ) -> tuple[bytes, bool]:
+        """Read UploadFile in bounded chunks to prevent out-of-memory denial-of-service.
+
+        Returns (data, is_oversized). If the stream exceeds max_bytes, reading halts
+        immediately without buffering the remaining content.
+        """
+        buffer = bytearray()
+        while True:
+            chunk = await upload_file.read(chunk_size)
+            if not chunk:
+                break
+            buffer.extend(chunk)
+            if len(buffer) > max_bytes:
+                # Halt immediately; avoid loading remainder of oversized file
+                return bytes(buffer), True
+
+        return bytes(buffer), False
 
     def validate(self, image_bytes: bytes) -> ValidationResult:
         """Inspect image bytes for size, validity, resolution, and blur."""

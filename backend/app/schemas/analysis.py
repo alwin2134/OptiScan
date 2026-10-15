@@ -55,7 +55,7 @@ class AnalysisResponse(BaseModel):
     answer: Optional[str] = Field(
         default=None,
         description="The descriptive text or OCR readout provided by the vision engine",
-        examples=["A person is standing near a doorway."],
+        examples=["A white bottle is placed on a table."],
     )
     should_recapture: bool = Field(
         default=False,
@@ -66,4 +66,18 @@ class AnalysisResponse(BaseModel):
         default=None,
         description="Explanatory reason when recapture is recommended or error occurred",
         examples=["Image is too blurry. Please hold steady and recapture."],
+    )
+
+
+class OcrAnalysisRequest(BaseModel):
+    """Optional JSON payload schema for analyzing pre-extracted OCR text."""
+
+    ocr_text: str = Field(
+        ...,
+        description="Extracted text string provided by on-device ML Kit OCR",
+        min_length=1,
+    )
+    question: Optional[str] = Field(
+        default=None,
+        description="Optional question about the extracted text (e.g., 'What is the dosage?')",
     )
