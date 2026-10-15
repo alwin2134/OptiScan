@@ -97,6 +97,10 @@ fun OptiScanApp(
                             performHaptic()
                             viewModel.navigateTo(Screen.Camera(task))
                         },
+                        onStartGuidedTask = {
+                            performHaptic()
+                            viewModel.startGuidedTask()
+                        },
                         onNavigateToAskQuestion = {
                             performHaptic()
                             viewModel.navigateTo(Screen.AskQuestion())
@@ -180,12 +184,10 @@ fun OptiScanApp(
                         viewModel.analyzeCapturedImage(screen.task, screen.imageBytes)
                     },
                     onCancel = {
-                        viewModel.cancelAnalysis()
-                        viewModel.navigateTo(Screen.Camera(screen.task))
+                        viewModel.cancelAnalysis(screen.task)
                     },
                     onAnnounceProcessing = {
-                        val taskName = if (screen.task == ScanTask.READ_TEXT) strings.processingReadingText else strings.processingDescribing
-                        viewModel.speak(taskName)
+                        // Analysis initiation already announces processing status in analyzeCapturedImage
                     },
                     modifier = modifier.fillMaxSize()
                 )
@@ -203,7 +205,7 @@ fun OptiScanApp(
                     onStopSpeech = { viewModel.stopSpeech() },
                     onAskQuestion = { contextText ->
                         performHaptic()
-                        viewModel.navigateTo(Screen.AskQuestion(contextTitle = "Medicine Label", contextContent = contextText))
+                        viewModel.navigateTo(Screen.AskQuestion(contextTitle = strings.extractedTextTitle, contextContent = contextText))
                     },
                     onCaptureAnother = {
                         performHaptic()
@@ -212,11 +214,6 @@ fun OptiScanApp(
                     onBackToHome = {
                         performHaptic()
                         viewModel.navigateTo(Screen.Home, clearBackstack = true)
-                    },
-                    onAnnounceResult = { announcement ->
-                        if (!isSpeaking) {
-                            viewModel.speak(announcement)
-                        }
                     },
                     modifier = modifier.fillMaxSize()
                 )
@@ -234,7 +231,7 @@ fun OptiScanApp(
                     onStopSpeech = { viewModel.stopSpeech() },
                     onAskQuestion = { contextText ->
                         performHaptic()
-                        viewModel.navigateTo(Screen.AskQuestion(contextTitle = "Indoor Hallway", contextContent = contextText))
+                        viewModel.navigateTo(Screen.AskQuestion(contextTitle = strings.sceneDescriptionTitle, contextContent = contextText))
                     },
                     onCaptureAnother = {
                         performHaptic()
@@ -243,11 +240,6 @@ fun OptiScanApp(
                     onBackToHome = {
                         performHaptic()
                         viewModel.navigateTo(Screen.Home, clearBackstack = true)
-                    },
-                    onAnnounceResult = { announcement ->
-                        if (!isSpeaking) {
-                            viewModel.speak(announcement)
-                        }
                     },
                     modifier = modifier.fillMaxSize()
                 )
@@ -271,6 +263,48 @@ fun OptiScanApp(
                 )
             }
 
+            is Screen.GuidedTask -> {
+                val guidedSession by viewModel.guidedTaskSession.collectAsState()
+                GuidedTaskScreen(
+                    goal = guidedSession?.goal ?: screen.goal,
+                    stepIndex = guidedSession?.currentStepIndex ?: 1,
+                    instruction = guidedSession?.currentInstruction ?: screen.currentInstruction ?: "",
+                    needsClarification = guidedSession?.needsClarification ?: false,
+                    isTaskComplete = guidedSession?.isTaskComplete ?: false,
+                    isSpeaking = isSpeaking,
+                    language = settings.language,
+                    onNextStep = {
+                        performHaptic()
+                        viewModel.advanceGuidedTask()
+                    },
+                    onRepeatStep = {
+                        performHaptic()
+                        viewModel.repeatGuidedTaskInstruction()
+                    },
+                    onScanAgain = {
+                        performHaptic()
+                        viewModel.rescanGuidedTask()
+                    },
+                    onAskQuestion = {
+                        performHaptic()
+                        val currentText = guidedSession?.currentInstruction ?: screen.currentInstruction ?: ""
+                        viewModel.navigateTo(
+                            Screen.AskQuestion(
+                                contextTitle = strings.guidedTaskTitle,
+                                contextContent = currentText
+                            )
+                        )
+                    },
+                    onStopTask = {
+                        performHaptic()
+                        viewModel.stopGuidedTask()
+                    },
+                    onReadAloud = { text -> viewModel.speak(text) },
+                    onStopSpeech = { viewModel.stopSpeech() },
+                    modifier = modifier.fillMaxSize()
+                )
+            }
+
             is Screen.Settings -> {
                 SettingsScreen(
                     settings = settings,
@@ -280,6 +314,9 @@ fun OptiScanApp(
                     },
                     onTestSpeechRate = { rate ->
                         viewModel.testSpeechRate(rate)
+                    },
+                    onTestConnection = { url, callback ->
+                        viewModel.testBackendConnection(url, callback)
                     },
                     onBackClick = { viewModel.navigateBack() },
                     onAnnounceSettings = {

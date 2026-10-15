@@ -301,4 +301,23 @@ class PreferencesAndSpeechTest {
         assertTrue("English mock answer must have [Offline Mock] prefix", enAnswer.startsWith("[Offline Mock]"))
         assertTrue("Hindi mock answer must have [ऑफलाइन मॉक] prefix", hiAnswer.startsWith("[ऑफलाइन मॉक]"))
     }
+
+    @Test
+    fun testPreferencesManagerCustomBackendUrlPersistence() {
+        val fakePrefs = InMemorySharedPreferences()
+        val editor = fakePrefs.edit()
+
+        // Default should be empty string
+        val defaultUrl = fakePrefs.getString(PreferencesManager.KEY_CUSTOM_BACKEND_URL, "")
+        assertEquals("", defaultUrl)
+
+        // Save custom backend URL
+        val customUrl = "https://optiscan-api.production.app/"
+        editor.putString(PreferencesManager.KEY_CUSTOM_BACKEND_URL, customUrl)
+        editor.apply()
+
+        // Read back
+        val loadedUrl = fakePrefs.getString(PreferencesManager.KEY_CUSTOM_BACKEND_URL, "")
+        assertEquals(customUrl, loadedUrl)
+    }
 }

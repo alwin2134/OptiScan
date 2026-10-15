@@ -1,5 +1,6 @@
 package com.optiscan.app
 
+import android.content.Context
 import android.graphics.Bitmap
 import com.optiscan.app.camera.CameraManager
 import com.optiscan.app.data.models.AnalysisResponse
@@ -10,6 +11,8 @@ import com.optiscan.app.navigation.AppLanguage
 import com.optiscan.app.navigation.AppSettings
 import com.optiscan.app.navigation.ScanTask
 import com.optiscan.app.navigation.Screen
+import com.optiscan.app.ui.localization.AppStrings
+import com.optiscan.app.ui.screens.GuidedTaskState
 import com.optiscan.app.ui.screens.MainViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -38,6 +41,8 @@ class FakeScanRepository : ScanRepository {
     var capturedOcrText: String? = null
     var capturedQuestion: String? = null
     var capturedLanguage: String? = null
+    var capturedTaskGoal: String? = null
+    var capturedStepHistory: String? = null
     var callCount: Int = 0
 
     override suspend fun analyzeImage(
@@ -45,13 +50,17 @@ class FakeScanRepository : ScanRepository {
         task: String,
         question: String?,
         ocrText: String?,
-        language: String
+        language: String,
+        taskGoal: String?,
+        stepHistory: String?
     ): Result<AnalysisResponse> {
         callCount++
         capturedTask = task
         capturedQuestion = question
         capturedOcrText = ocrText
         capturedLanguage = language
+        capturedTaskGoal = taskGoal
+        capturedStepHistory = stepHistory
 
         return analyzeResult ?: Result.success(
             AnalysisResponse(
@@ -68,6 +77,9 @@ class FakeScanRepository : ScanRepository {
         return onDeviceOcrResult ?: Result.success("Amoxicillin 500mg - Take one capsule daily")
     }
 
+    var activeUrl: String = "http://10.0.2.2:8000/"
+    var configured: Boolean = true
+
     override suspend fun checkBackendHealth(): Boolean = true
 
     override fun setMockMode(enabled: Boolean) {
@@ -75,6 +87,14 @@ class FakeScanRepository : ScanRepository {
     }
 
     override fun isMockMode(): Boolean = isMock
+
+    override fun updateBaseUrl(newUrl: String) {
+        activeUrl = newUrl
+    }
+
+    override fun getBaseUrl(): String = activeUrl
+
+    override fun isConfigured(): Boolean = configured
 }
 
 /**
@@ -391,4 +411,252 @@ class MainViewModelIntegrationTest {
         // Speech must be stopped
         assertFalse(viewModel.isSpeaking.value)
     }
+
+    @Test
+    fun testAskQuestionWhenNoImageCapturedReturnsHonestNoticeAndNeverMocks() = runTest(testDispatcher) {
+        // Ensure no image is captured and mock mode is false
+        viewModel.setCapturedImage(null, null)
+        fakeRepository.setMockMode(false)
+
+        var resultAnswer: String? = null
+        viewModel.askQuestion(
+            query = "Where is the door?",
+            contextContent = null
+        ) { answer ->
+            resultAnswer = answer
+        }
+
+        advanceUntilIdle()
+        assertNotNull(resultAnswer)
+        assertEquals("No image available to answer questions about. Please capture a photo first.", resultAnswer)
+        assertFalse("Must never return canned mock room descriptions when no image exists", resultAnswer!!.contains("doors on both sides"))
+    }
+
+    @Test
+    fun testServerConfigurationUpdatesRepositoryUrl() = runTest(testDispatcher) {
+        val testUrl = "https://api.optiscan.example.com/"
+        viewModel.updateSettings(AppSettings(customBackendUrl = testUrl))
+
+        assertEquals(testUrl, fakeRepository.activeUrl)
+    }
+
+    @Test
+    fun testOfflinePreservesOnDeviceOcrWhenCloudFails() = runTest(testDispatcher) {
+        val sampleBitmap = org.mockito.Mockito.mock(Bitmap::class.java)
+        viewModel.setCapturedBitmap(sampleBitmap)
+
+        fakeRepository.onDeviceOcrResult = Result.success("Aspirin 81mg - Daily Dose")
+        fakeRepository.analyzeResult = Result.failure(Exception("Network unreachable"))
+
+        viewModel.analyzeCapturedImage(ScanTask.READ_TEXT, sampleBytes)
+        advanceUntilIdle()
+
+        // Screen must arrive at ReadTextResult with on-device text preserved
+        val currentScreen = viewModel.currentScreen.value
+        assertTrue("Must navigate to ReadTextResult on offline fallback", currentScreen is Screen.ReadTextResult)
+        val textResult = currentScreen as Screen.ReadTextResult
+        assertEquals("Aspirin 81mg - Daily Dose", textResult.text)
+        assertFalse(textResult.isLiveResult)
+        assertEquals(AppStrings.English.onDeviceFallbackNotice, textResult.recaptureReason)
+    }
+
+    @Test
+    fun testIsCapturingStateInitiallyFalse() = runTest(testDispatcher) {
+        assertFalse("isCapturing must initially be false", viewModel.isCapturing.value)
+    }
+
+    @Test
+    fun testCapturePhotoWithoutCameraPermissionSpeaksWarningAndAvoidsNavigation() = runTest(testDispatcher) {
+        viewModel.setCameraPermission(false)
+        val mockContext = org.mockito.Mockito.mock(Context::class.java)
+
+        viewModel.capturePhoto(mockContext, ScanTask.READ_TEXT)
+        advanceUntilIdle()
+
+        assertFalse("isCapturing must reset after permission denial check", viewModel.isCapturing.value)
+        assertFalse("Must not navigate to ImagePreview without camera permission", viewModel.currentScreen.value is Screen.ImagePreview)
+    }
+
+    @Test
+    fun testNavigateToStopsSpeechOnNavigationToAskQuestion() = runTest(testDispatcher) {
+        viewModel.speak("Ongoing text readout")
+        viewModel.navigateTo(Screen.AskQuestion(contextTitle = "Medicine Label", contextContent = "Sample OCR"))
+        assertFalse("Speech must be cancelled on navigating to AskQuestion screen", viewModel.isSpeaking.value)
+    }
+
+    @Test
+    fun testCancelAnalysisNavigatesToCameraAndSpeaksCancellation() = runTest(testDispatcher) {
+        viewModel.analyzeCapturedImage(ScanTask.READ_TEXT, sampleBytes)
+        viewModel.cancelAnalysis(ScanTask.READ_TEXT)
+        advanceUntilIdle()
+
+        assertFalse("isAnalyzing must be false after cancellation", viewModel.isAnalyzing.value)
+        val currentScreen = viewModel.currentScreen.value
+        assertTrue("Must navigate back to Camera on cancellation", currentScreen is Screen.Camera)
+        assertEquals(ScanTask.READ_TEXT, (currentScreen as Screen.Camera).task)
+    }
+
+    @Test
+    fun testAskQuestionWithOcrTextRoutesReadTextTask() = runTest(testDispatcher) {
+        viewModel.setCapturedImage(null, sampleBytes)
+        fakeRepository.analyzeResult = Result.success(
+            AnalysisResponse(
+                status = StatusTypes.SUCCESS,
+                task = TaskTypes.READ_TEXT,
+                answer = "Take 1 tablet every 4 to 6 hours.",
+                shouldRecapture = false
+            )
+        )
+
+        var answeredQuery: String? = null
+        val ocrContext = "Ibuprofen 200mg - Take 1 tablet every 4 to 6 hours as needed."
+        viewModel.askQuestion(
+            query = "What is the frequency of dosage?",
+            contextContent = ocrContext
+        ) { answer ->
+            answeredQuery = answer
+        }
+
+        advanceUntilIdle()
+        assertNotNull(answeredQuery)
+        assertEquals("Take 1 tablet every 4 to 6 hours.", answeredQuery)
+        assertEquals(TaskTypes.READ_TEXT, fakeRepository.capturedTask)
+        assertEquals(ocrContext, fakeRepository.capturedOcrText)
+    }
+
+    @Test
+    fun testStartGuidedTaskInitializesObservingStateAndNavigatesToCamera() = runTest(testDispatcher) {
+        viewModel.startGuidedTask("make tea", autoNavigateToCamera = true)
+        val session = viewModel.guidedTaskSession.value
+        assertNotNull(session)
+        assertEquals("make tea", session?.goal)
+        assertEquals(GuidedTaskState.OBSERVING, session?.state)
+        assertEquals(0, session?.currentStepIndex)
+        val screen = viewModel.currentScreen.value
+        assertTrue(screen is Screen.Camera)
+        assertEquals(ScanTask.GUIDED_TASK, (screen as Screen.Camera).task)
+    }
+
+    @Test
+    fun testAnalyzeCapturedImageGuidedTaskUpdatesSessionAndNavigatesToGuidedTaskScreen() = runTest(testDispatcher) {
+        fakeRepository.analyzeResult = Result.success(
+            AnalysisResponse(
+                status = StatusTypes.SUCCESS,
+                task = TaskTypes.GUIDED_TASK,
+                answer = "Step 1: Plug in the kettle and switch it on.",
+                stepIndex = 1,
+                isTaskComplete = false,
+                needsClarification = false
+            )
+        )
+
+        viewModel.startGuidedTask("make tea", autoNavigateToCamera = false)
+        viewModel.analyzeCapturedImage(ScanTask.GUIDED_TASK, sampleBytes)
+        advanceUntilIdle()
+
+        assertFalse("isAnalyzing must be false after response", viewModel.isAnalyzing.value)
+        val session = viewModel.guidedTaskSession.value
+        assertNotNull(session)
+        assertEquals(GuidedTaskState.INSTRUCTING, session?.state)
+        assertEquals(1, session?.currentStepIndex)
+        assertEquals("Step 1: Plug in the kettle and switch it on.", session?.currentInstruction)
+        assertFalse(session?.needsClarification == true)
+        assertFalse(session?.isTaskComplete == true)
+
+        val screen = viewModel.currentScreen.value
+        assertTrue(screen is Screen.GuidedTask)
+        val guidedScreen = screen as Screen.GuidedTask
+        assertEquals("make tea", guidedScreen.goal)
+        assertEquals("Step 1: Plug in the kettle and switch it on.", guidedScreen.currentInstruction)
+        assertEquals(TaskTypes.GUIDED_TASK, fakeRepository.capturedTask)
+        assertEquals("make tea", fakeRepository.capturedTaskGoal)
+    }
+
+    @Test
+    fun testAdvanceGuidedTaskWithCompletionMarksTaskComplete() = runTest(testDispatcher) {
+        fakeRepository.setMockMode(true)
+        fakeRepository.analyzeResult = Result.success(
+            AnalysisResponse(
+                status = StatusTypes.SUCCESS,
+                task = TaskTypes.GUIDED_TASK,
+                answer = "Your tea is poured and ready. Enjoy your drink.",
+                stepIndex = 5,
+                isTaskComplete = true,
+                needsClarification = false
+            )
+        )
+
+        viewModel.setCapturedImage(null, sampleBytes)
+        viewModel.startGuidedTask("make tea", autoNavigateToCamera = false)
+        viewModel.advanceGuidedTask()
+        advanceUntilIdle()
+
+        val session = viewModel.guidedTaskSession.value
+        assertNotNull(session)
+        assertEquals(GuidedTaskState.COMPLETED, session?.state)
+        assertTrue(session?.isTaskComplete == true)
+        assertEquals(5, session?.currentStepIndex)
+    }
+
+    @Test
+    fun testAdvanceGuidedTaskInLiveModeNavigatesToCameraToPreventStaleContext() = runTest(testDispatcher) {
+        fakeRepository.setMockMode(false)
+        viewModel.startGuidedTask("make tea", autoNavigateToCamera = false)
+        viewModel.advanceGuidedTask()
+
+        val screen = viewModel.currentScreen.value
+        assertTrue("Live mode advance must navigate to Camera for visual verification", screen is Screen.Camera)
+        assertEquals(ScanTask.GUIDED_TASK, (screen as Screen.Camera).task)
+    }
+
+    @Test
+    fun testStopGuidedTaskHaltsSessionAndNavigatesHome() = runTest(testDispatcher) {
+        viewModel.startGuidedTask("make tea", autoNavigateToCamera = false)
+        viewModel.stopGuidedTask()
+
+        val session = viewModel.guidedTaskSession.value
+        assertNotNull(session)
+        assertEquals(GuidedTaskState.STOPPED, session?.state)
+        assertTrue(viewModel.currentScreen.value is Screen.Home)
+    }
+
+    @Test
+    fun testStopGuidedTaskCancelsInflightAnalysisAndDiscardsLateResponse() = runTest(testDispatcher) {
+        fakeRepository.analyzeResult = Result.success(
+            AnalysisResponse(
+                status = StatusTypes.SUCCESS,
+                task = TaskTypes.GUIDED_TASK,
+                answer = "Late response that should be discarded.",
+                stepIndex = 2
+            )
+        )
+
+        viewModel.startGuidedTask("make tea", autoNavigateToCamera = false)
+        viewModel.stopGuidedTask()
+        viewModel.analyzeCapturedImage(ScanTask.GUIDED_TASK, sampleBytes)
+        advanceUntilIdle()
+
+        assertEquals("Session state must remain STOPPED", GuidedTaskState.STOPPED, viewModel.guidedTaskSession.value?.state)
+        assertTrue("Screen must remain Home", viewModel.currentScreen.value is Screen.Home)
+    }
+
+    @Test
+    fun testGuidedTaskPropagatesHindiLanguagePreference() = runTest(testDispatcher) {
+        viewModel.updateSettings(AppSettings(language = AppLanguage.HINDI))
+        fakeRepository.analyzeResult = Result.success(
+            AnalysisResponse(
+                status = StatusTypes.SUCCESS,
+                task = TaskTypes.GUIDED_TASK,
+                answer = "कदम 1: केतली का स्विच चालू करें।",
+                stepIndex = 1
+            )
+        )
+
+        viewModel.analyzeCapturedImage(ScanTask.GUIDED_TASK, sampleBytes)
+        advanceUntilIdle()
+
+        assertEquals("hi", fakeRepository.capturedLanguage)
+        assertEquals(TaskTypes.GUIDED_TASK, fakeRepository.capturedTask)
+    }
 }
+

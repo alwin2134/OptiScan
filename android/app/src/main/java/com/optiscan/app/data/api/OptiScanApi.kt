@@ -34,6 +34,8 @@ interface OptiScanApi {
         @Part("task") task: RequestBody,
         @Part("question") question: RequestBody? = null,
         @Part("ocr_text") ocrText: RequestBody? = null,
-        @Part("language") language: RequestBody? = null
+        @Part("language") language: RequestBody? = null,
+        @Part("task_goal") taskGoal: RequestBody? = null,
+        @Part("step_history") stepHistory: RequestBody? = null
     ): AnalysisResponse
 }

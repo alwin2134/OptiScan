@@ -89,4 +89,29 @@ class ModelContractTest {
         assertFalse(response.shouldRecapture)
         assertNull(response.reason)
     }
+
+    @Test
+    fun testNetworkConfigUrlValidation() {
+        assertTrue(com.optiscan.app.utils.NetworkConfig.isValidUrl("https://api.optiscan.ai/"))
+        assertTrue(com.optiscan.app.utils.NetworkConfig.isValidUrl("http://192.168.1.15:8000/"))
+        assertFalse(com.optiscan.app.utils.NetworkConfig.isValidUrl(""))
+        assertFalse(com.optiscan.app.utils.NetworkConfig.isValidUrl("ftp://invalid"))
+        assertFalse(com.optiscan.app.utils.NetworkConfig.isValidUrl("just-text"))
+    }
+
+    @Test
+    fun testNetworkConfigHostedUrlRejectsLoopbacks() {
+        assertTrue(com.optiscan.app.utils.NetworkConfig.isValidHostedUrl("https://api.optiscan.ai/"))
+        assertTrue(com.optiscan.app.utils.NetworkConfig.isValidHostedUrl("https://my-backend.onrender.com/"))
+        assertFalse(com.optiscan.app.utils.NetworkConfig.isValidHostedUrl("http://127.0.0.1:8000/"))
+        assertFalse(com.optiscan.app.utils.NetworkConfig.isValidHostedUrl("http://localhost:8000/"))
+        assertFalse(com.optiscan.app.utils.NetworkConfig.isValidHostedUrl("http://10.0.2.2:8000/"))
+    }
+
+    @Test
+    fun testNetworkConfigUrlNormalization() {
+        assertEquals("https://api.optiscan.ai/", com.optiscan.app.utils.NetworkConfig.normalizeUrl("https://api.optiscan.ai"))
+        assertEquals("https://api.optiscan.ai/", com.optiscan.app.utils.NetworkConfig.normalizeUrl("https://api.optiscan.ai/"))
+        assertEquals("", com.optiscan.app.utils.NetworkConfig.normalizeUrl("   "))
+    }
 }

@@ -10,6 +10,7 @@ class TaskType(str, Enum):
 
     DESCRIBE_IMAGE = "describe_image"
     READ_TEXT = "read_text"
+    GUIDED_TASK = "guided_task"
 
 
 class StatusType(str, Enum):
@@ -49,12 +50,12 @@ class AnalysisResponse(BaseModel):
     )
     task: str = Field(
         ...,
-        description="The task that was executed: 'describe_image' or 'read_text'",
-        examples=["describe_image", "read_text"],
+        description="The task that was executed: 'describe_image', 'read_text', or 'guided_task'",
+        examples=["describe_image", "read_text", "guided_task"],
     )
     answer: Optional[str] = Field(
         default=None,
-        description="The descriptive text or OCR readout provided by the vision engine",
+        description="The descriptive text, instruction, or OCR readout provided by the vision engine",
         examples=["A white bottle is placed on a table."],
     )
     should_recapture: bool = Field(
@@ -66,6 +67,26 @@ class AnalysisResponse(BaseModel):
         default=None,
         description="Explanatory reason when recapture is recommended or error occurred",
         examples=["Image is too blurry. Please hold steady and recapture."],
+    )
+    step_index: Optional[int] = Field(
+        default=None,
+        description="Current step index for sequential guided task mode",
+        examples=[1],
+    )
+    is_task_complete: bool = Field(
+        default=False,
+        description="True if the guided task has reached its final completion step",
+        examples=[False, True],
+    )
+    needs_clarification: bool = Field(
+        default=False,
+        description="True if the vision model requires user clarification on an ambiguous state",
+        examples=[False, True],
+    )
+    needs_rescan: bool = Field(
+        default=False,
+        description="True if visual confirmation is required before proceeding to the next step",
+        examples=[False, True],
     )
 
 

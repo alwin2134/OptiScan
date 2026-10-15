@@ -47,20 +47,9 @@ fun DescriptionResultScreen(
     onAskQuestion: (contextContent: String) -> Unit,
     onCaptureAnother: () -> Unit,
     onBackToHome: () -> Unit,
-    onAnnounceResult: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val strings = AppStrings.get(language)
-
-    LaunchedEffect(Unit) {
-        if (!isSpeaking) {
-            if (shouldRecapture) {
-                onAnnounceResult("${strings.recaptureAnnouncement} ${recaptureReason ?: strings.recaptureBlurryReason}")
-            } else {
-                onAnnounceResult(strings.sceneDescriptionAnnouncement)
-            }
-        }
-    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -97,7 +86,8 @@ fun DescriptionResultScreen(
                     onClick = onCaptureAnother,
                     variant = ButtonVariant.PRIMARY,
                     icon = Icons.Default.CameraAlt,
-                    contentDesc = "${strings.retakePhoto} button"
+                    contentDesc = "${strings.retakePhoto} button",
+                    bypassTripleTap = true
                 )
 
                 OptiScanButton(

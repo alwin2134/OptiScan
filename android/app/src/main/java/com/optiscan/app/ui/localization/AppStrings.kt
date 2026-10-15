@@ -59,6 +59,7 @@ data class AppStrings(
     val processingSubtitle: String,
     val processingReadingText: String,
     val processingDescribing: String,
+    val processingGuidedTask: String,
     val preparingAnalysis: String,
     val processingDetail: String,
     val analysisIssueTitle: String,
@@ -118,6 +119,26 @@ data class AppStrings(
     val speechNotAvailableWarning: String,
     val micPermissionRequiredWarning: String,
 
+    // Guided Task Mode
+    val guidedTaskTitle: String,
+    val guidedTaskSubtitle: String,
+    val guidedTaskActionTitle: String,
+    val guidedTaskActionSubtitle: String,
+    val guidedTaskSpokenIntro: String,
+    val nextStep: String,
+    val repeatStep: String,
+    val scanAgain: String,
+    val stopTask: String,
+    val taskCompleted: String,
+    val stepLabel: String,
+    val workspacePrompt: String,
+    val observationTitle: String,
+    val instructionTitle: String,
+    val clarificationPrompt: String,
+    val taskStoppedSpoken: String,
+    val safetyWarningTitle: String,
+    val safetyWarningMessage: String,
+
     // Settings Screen
     val settingsTitle: String,
     val settingsSubtitle: String,
@@ -138,6 +159,19 @@ data class AppStrings(
     val hapticFeedbackSubtitle: String,
     val offlineMockTitle: String,
     val offlineMockSubtitle: String,
+    val serverConfigTitle: String,
+    val serverConfigSubtitle: String,
+    val serverUrlLabel: String,
+    val serverUrlHint: String,
+    val testConnectionButton: String,
+    val connectionStatusConnected: String,
+    val connectionStatusFailed: String,
+    val connectionStatusUnconfigured: String,
+    val saveServerUrlButton: String,
+    val serverUrlSavedAnnouncement: String,
+    val cloudInternetRequiredNotice: String,
+    val noImageForQuestionNotice: String,
+    val serverNotConfiguredMessage: String,
     val aboutTitle: String,
     val aboutDescription: String,
 
@@ -153,11 +187,13 @@ data class AppStrings(
     fun taskTitle(task: ScanTask): String = when (task) {
         ScanTask.READ_TEXT -> readTextTitle
         ScanTask.DESCRIBE_SURROUNDINGS -> describeSurroundingsTitle
+        ScanTask.GUIDED_TASK -> guidedTaskTitle
     }
 
     fun taskSubtitle(task: ScanTask): String = when (task) {
         ScanTask.READ_TEXT -> readTextSubtitle
         ScanTask.DESCRIBE_SURROUNDINGS -> describeSurroundingsSubtitle
+        ScanTask.GUIDED_TASK -> guidedTaskSubtitle
     }
 
     companion object {
@@ -212,6 +248,7 @@ data class AppStrings(
             processingSubtitle = "Analyzing your image",
             processingReadingText = "Reading printed text. Please hold steady.",
             processingDescribing = "Analyzing surroundings. Please hold steady.",
+            processingGuidedTask = "Analyzing guided task instructions. Please hold steady.",
             preparingAnalysis = "Preparing analysis...",
             processingDetail = "Please hold steady. Results will be read aloud momentarily.",
             analysisIssueTitle = "Analysis Issue",
@@ -271,6 +308,26 @@ data class AppStrings(
             speechNotAvailableWarning = "Speech recognition is not available on this device. Please type your question.",
             micPermissionRequiredWarning = "Microphone permission is required for voice input. Please grant permission or type below.",
 
+            // Guided Task Mode
+            guidedTaskTitle = "Guided Task",
+            guidedTaskSubtitle = "Step-by-step assistance for daily activities",
+            guidedTaskActionTitle = "Guided Task Assistance",
+            guidedTaskActionSubtitle = "Step-by-step guidance for tasks like making tea or coffee",
+            guidedTaskSpokenIntro = "Guided Task Mode. Aim camera at your workspace and tap Scan to begin, or say what task you want help with.",
+            nextStep = "Next Step",
+            repeatStep = "Repeat Step",
+            scanAgain = "Scan Again",
+            stopTask = "Stop Task",
+            taskCompleted = "Task Completed!",
+            stepLabel = "Step",
+            workspacePrompt = "Point camera at your workspace and scan to start",
+            observationTitle = "Visual Observation",
+            instructionTitle = "Current Instruction",
+            clarificationPrompt = "Clarification Needed",
+            taskStoppedSpoken = "Guided task session stopped.",
+            safetyWarningTitle = "Safety Notice",
+            safetyWarningMessage = "Caution: Hot liquids, heating appliances, or sharp utensils may be present. Proceed with care.",
+
             // Settings
             settingsTitle = "Settings",
             settingsSubtitle = "Voice & Accessibility Preferences",
@@ -291,6 +348,19 @@ data class AppStrings(
             hapticFeedbackSubtitle = "Vibrate device gently upon successful capture and copy actions.",
             offlineMockTitle = "Offline Mock Mode",
             offlineMockSubtitle = "Use local simulated responses instead of connecting to the live AI backend.",
+            serverConfigTitle = "Backend Server Connection",
+            serverConfigSubtitle = "Configure the cloud AI backend server URL (HTTPS required for production hosting).",
+            serverUrlLabel = "Server Base URL",
+            serverUrlHint = "e.g. https://api.optiscan.ai or http://10.10.132.197:8000",
+            testConnectionButton = "Test Server Connection",
+            connectionStatusConnected = "Connected to backend server successfully.",
+            connectionStatusFailed = "Could not connect to backend server.",
+            connectionStatusUnconfigured = "Backend server URL is not configured.",
+            saveServerUrlButton = "Save Server URL",
+            serverUrlSavedAnnouncement = "Server URL saved.",
+            cloudInternetRequiredNotice = "Internet connection is required for visual scene descriptions.",
+            noImageForQuestionNotice = "No image available to answer questions about. Please capture a photo first.",
+            serverNotConfiguredMessage = "Hosted backend URL is not configured. Please enter a valid server URL in Settings or enable Offline Mock Mode.",
             aboutTitle = "About OptiScan",
             aboutDescription = "Version 1.0.0 (Hackathon MVP)\nDesigned for blind and low-vision accessibility. Supports TalkBack screen reading, large touch targets, and high-contrast color standards.",
 
@@ -355,6 +425,7 @@ data class AppStrings(
             processingSubtitle = "आपकी छवि का विश्लेषण हो रहा है",
             processingReadingText = "छपा हुआ टेक्स्ट पढ़ा जा रहा है। कृपया कैमरा स्थिर रखें।",
             processingDescribing = "आस-पास का विश्लेषण किया जा रहा है। कृपया कैमरा स्थिर रखें।",
+            processingGuidedTask = "कार्य निर्देशों का विश्लेषण किया जा रहा है। कृपया कैमरा स्थिर रखें।",
             preparingAnalysis = "विश्लेषण तैयार किया जा रहा है...",
             processingDetail = "कृपया कैमरा स्थिर रखें। परिणाम थोड़ी देर में पढ़कर सुनाए जाएंगे।",
             analysisIssueTitle = "विश्लेषण समस्या",
@@ -414,6 +485,26 @@ data class AppStrings(
             speechNotAvailableWarning = "इस डिवाइस पर आवाज़ पहचान उपलब्ध नहीं है। कृपया लिखकर प्रश्न पूछें।",
             micPermissionRequiredWarning = "आवाज़ इनपुट के लिए माइक्रोफ़ोन अनुमति आवश्यक है। कृपया अनुमति दें या नीचे टाइप करें।",
 
+            // Guided Task Mode
+            guidedTaskTitle = "गाइडेड टास्क",
+            guidedTaskSubtitle = "दैनिक कार्यों के लिए कदम-दर-कदम सहायता",
+            guidedTaskActionTitle = "गाइडेड टास्क सहायता",
+            guidedTaskActionSubtitle = "चाय या कॉफी बनाने जैसे कार्यों के लिए चरणबद्ध मार्गदर्शन",
+            guidedTaskSpokenIntro = "गाइडेड टास्क मोड। कैमरे को अपने कार्यक्षेत्र पर रखें और शुरू करने के लिए स्कैन करें, या बोलें कि आप किस कार्य में मदद चाहते हैं।",
+            nextStep = "अगला कदम",
+            repeatStep = "कदम दोहराएं",
+            scanAgain = "फिर से स्कैन करें",
+            stopTask = "टास्क रोकें",
+            taskCompleted = "टास्क पूरा हुआ!",
+            stepLabel = "कदम",
+            workspacePrompt = "कैमरे को कार्यक्षेत्र पर रखें और शुरू करने के लिए स्कैन करें",
+            observationTitle = "दृश्य अवलोकन",
+            instructionTitle = "वर्तमान निर्देश",
+            clarificationPrompt = "स्पष्टीकरण आवश्यक है",
+            taskStoppedSpoken = "गाइडेड टास्क सत्र रोक दिया गया है।",
+            safetyWarningTitle = "सुरक्षा सूचना",
+            safetyWarningMessage = "सावधानी: गर्म तरल, गर्म उपकरण या नुकीली वस्तुएं उपस्थित हो सकती हैं। सावधानी से आगे बढ़ें।",
+
             // Settings
             settingsTitle = "सेटिंग्स",
             settingsSubtitle = "ध्वनि और सुगमता प्राथमिकताएं",
@@ -434,6 +525,19 @@ data class AppStrings(
             hapticFeedbackSubtitle = "सफल फोटो या कॉपी पर हल्का कंपन करें।",
             offlineMockTitle = "ऑफलाइन मॉक मोड",
             offlineMockSubtitle = "लाइव AI बैकएंड के बजाय स्थानीय सिम्युलेटेड उत्तरों का उपयोग करें।",
+            serverConfigTitle = "बैकएंड सर्वर कनेक्शन",
+            serverConfigSubtitle = "क्लाउड AI बैकएंड सर्वर URL कॉन्फ़िगर करें (प्रोडक्शन में HTTPS आवश्यक है)।",
+            serverUrlLabel = "सर्वर बेस URL",
+            serverUrlHint = "उदा. https://api.optiscan.ai या http://10.10.132.197:8000",
+            testConnectionButton = "सर्वर कनेक्शन जांचें",
+            connectionStatusConnected = "सर्वर से सफलतापूर्वक कनेक्टेड।",
+            connectionStatusFailed = "सर्वर से कनेक्ट करने में असमर्थ।",
+            connectionStatusUnconfigured = "बैकएंड सर्वर URL कॉन्फ़िगर नहीं है।",
+            saveServerUrlButton = "सर्वर URL सहेजें",
+            serverUrlSavedAnnouncement = "सर्वर URL सहेज लिया गया है।",
+            cloudInternetRequiredNotice = "दृश्य विवरण के लिए इंटरनेट कनेक्शन आवश्यक है।",
+            noImageForQuestionNotice = "प्रश्न का उत्तर देने के लिए कोई फोटो उपलब्ध नहीं है। कृपया पहले फोटो खींचें।",
+            serverNotConfiguredMessage = "क्लाउड बैकएंड सर्वर कॉन्फ़िगर नहीं है। कृपया सेटिंग्स में सर्वर URL दर्ज करें या ऑफलाइन मॉक मोड सक्षम करें।",
             aboutTitle = "ऑप्टीस्कैन के बारे में",
             aboutDescription = "संस्करण 1.0.0 (हैकथॉन MVP)\nदृष्टिबाधित और कम दृष्टि वाले उपयोगकर्ताओं के लिए डिज़ाइन किया गया।",
 

@@ -14,7 +14,12 @@ object ApiClient {
 
     private fun createOkHttpClient(): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
+            // Avoid logging full binary image multipart payloads (prevents leaking sensitive captures & buffer overflow)
+            level = if (com.optiscan.app.BuildConfig.DEBUG) {
+                HttpLoggingInterceptor.Level.HEADERS
+            } else {
+                HttpLoggingInterceptor.Level.NONE
+            }
         }
 
         return OkHttpClient.Builder()
@@ -29,8 +34,13 @@ object ApiClient {
      * Create an instance of OptiScanApi pointing to the configured base URL.
      */
     fun createService(baseUrl: String = NetworkConfig.activeBaseUrl): OptiScanApi {
+        val safeUrl = if (NetworkConfig.isValidUrl(baseUrl)) {
+            NetworkConfig.normalizeUrl(baseUrl)
+        } else {
+            "http://127.0.0.1:8000/"
+        }
         return Retrofit.Builder()
-            .baseUrl(baseUrl)
+            .baseUrl(safeUrl)
             .client(createOkHttpClient())
             .addConverterFactory(GsonConverterFactory.create())
             .build()

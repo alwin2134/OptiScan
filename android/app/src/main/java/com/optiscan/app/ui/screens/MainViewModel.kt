@@ -25,6 +25,33 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.json.JSONArray
+
+/**
+ * State machine phases for interactive guided physical assistance (AROMA / Be My Eyes model).
+ */
+enum class GuidedTaskState {
+    IDLE,
+    OBSERVING,
+    AWAITING_CLARIFICATION,
+    INSTRUCTING,
+    AWAITING_USER_ACTION,
+    COMPLETED,
+    STOPPED
+}
+
+/**
+ * Session data keeping track of the user's current goal, procedural steps, and clarification state.
+ */
+data class GuidedTaskSession(
+    val goal: String = "make tea",
+    val state: GuidedTaskState = GuidedTaskState.IDLE,
+    val currentStepIndex: Int = 0,
+    val currentInstruction: String = "",
+    val needsClarification: Boolean = false,
+    val isTaskComplete: Boolean = false,
+    val stepHistory: List<String> = emptyList()
+)
 
 /**
  * Single source of truth for OptiScan navigation, camera state, visual analysis, accessibility, and volume key control.
@@ -57,6 +84,9 @@ class MainViewModel(
     private val _hasCameraPermission = MutableStateFlow(false)
     val hasCameraPermission: StateFlow<Boolean> = _hasCameraPermission.asStateFlow()
 
+    private val _isCapturing = MutableStateFlow(false)
+    val isCapturing: StateFlow<Boolean> = _isCapturing.asStateFlow()
+
     // Speech State
     private val _isSpeaking = MutableStateFlow(false)
     val isSpeaking: StateFlow<Boolean> = _isSpeaking.asStateFlow()
@@ -73,10 +103,17 @@ class MainViewModel(
     private val _analysisError = MutableStateFlow<String?>(null)
     val analysisError: StateFlow<String?> = _analysisError.asStateFlow()
 
+    // Guided Task State
+    private val _guidedTaskSession = MutableStateFlow<GuidedTaskSession?>(null)
+    val guidedTaskSession: StateFlow<GuidedTaskSession?> = _guidedTaskSession.asStateFlow()
+
     init {
         val loadedSettings = preferencesManager?.loadSettings() ?: AppSettings()
         _settings.value = loadedSettings
         repository.setMockMode(loadedSettings.useMockBackend)
+        if (loadedSettings.customBackendUrl.isNotBlank()) {
+            repository.updateBaseUrl(loadedSettings.customBackendUrl)
+        }
     }
 
     fun attachPreferencesManager(prefs: PreferencesManager) {
@@ -84,6 +121,9 @@ class MainViewModel(
         val loaded = prefs.loadSettings()
         _settings.value = loaded
         repository.setMockMode(loaded.useMockBackend)
+        if (loaded.customBackendUrl.isNotBlank()) {
+            repository.updateBaseUrl(loaded.customBackendUrl)
+        }
         applySettingsToTts(loaded)
     }
 
@@ -121,7 +161,7 @@ class MainViewModel(
 
     // Navigation methods
     fun navigateTo(screen: Screen, clearBackstack: Boolean = false) {
-        if (screen is Screen.Camera || screen is Screen.Home || screen is Screen.Settings || screen is Screen.ImagePreview) {
+        if (screen !is Screen.ReadTextResult && screen !is Screen.DescriptionResult && screen !is Screen.GuidedTask) {
             stopSpeech()
         }
         if (clearBackstack) {
@@ -148,12 +188,26 @@ class MainViewModel(
 
     /**
      * Executes photo capture from CameraX and moves to ImagePreview.
+     * Prevents overlapping concurrent captures and verifies camera permission.
      */
     fun capturePhoto(context: Context, task: ScanTask) {
+        if (_isCapturing.value) {
+            Log.d(tag, "Capture already in progress; ignoring duplicate request.")
+            return
+        }
+
+        val isHindi = _settings.value.language == AppLanguage.HINDI
+        val strings = AppStrings.get(_settings.value.language)
+
+        if (!_hasCameraPermission.value) {
+            speak(strings.cameraPermissionMessage)
+            return
+        }
+
+        _isCapturing.value = true
         viewModelScope.launch {
-            val isHindi = _settings.value.language == AppLanguage.HINDI
-            speak(if (isHindi) "फोटो खींच रहे हैं। कृपया फोन स्थिर रखें।" else "Capturing photo. Please hold steady.")
-            if (_hasCameraPermission.value) {
+            try {
+                speak(if (isHindi) "फोटो खींच रहे हैं। कृपया फोन स्थिर रखें।" else "Capturing photo. Please hold steady.")
                 val result = cameraManager.capturePhoto(context)
                 if (result.isSuccess) {
                     val bytes = result.getOrNull()
@@ -161,12 +215,15 @@ class MainViewModel(
                     setCapturedImage(bmp, bytes)
                     navigateTo(Screen.ImagePreview(task, bytes))
                 } else {
-                    setCapturedImage(null, null)
-                    navigateTo(Screen.ImagePreview(task))
+                    val err = if (isHindi) {
+                        "फोटो खींचने में विफलता। कृपया दोबारा प्रयास करें।"
+                    } else {
+                        "Failed to capture photo. Please try again."
+                    }
+                    speak(err)
                 }
-            } else {
-                setCapturedImage(null, null)
-                navigateTo(Screen.ImagePreview(task))
+            } finally {
+                _isCapturing.value = false
             }
         }
     }
@@ -222,6 +279,17 @@ class MainViewModel(
                 return true
             }
 
+            is Screen.GuidedTask -> {
+                // Toggle speech playback of current guided instruction
+                val instruction = _guidedTaskSession.value?.currentInstruction ?: screen.currentInstruction ?: ""
+                if (_isSpeaking.value) {
+                    stopSpeech()
+                } else if (instruction.isNotBlank()) {
+                    speak(instruction)
+                }
+                return true
+            }
+
             is Screen.Welcome -> {
                 speak(if (isHindi) "शुरू करें सक्रिय हुआ। ऑप्टीस्कैन होम में आपका स्वागत है।" else "Get Started activated. Welcome to OptiScan Home.")
                 navigateTo(Screen.Home, clearBackstack = true)
@@ -238,10 +306,14 @@ class MainViewModel(
     }
 
     fun updateSettings(newSettings: AppSettings) {
-        val previousLanguage = _settings.value.language
+        val previousSettings = _settings.value
+        val previousLanguage = previousSettings.language
         _settings.value = newSettings
         preferencesManager?.saveSettings(newSettings)
         repository.setMockMode(newSettings.useMockBackend)
+        if (newSettings.customBackendUrl != previousSettings.customBackendUrl && newSettings.customBackendUrl.isNotBlank()) {
+            repository.updateBaseUrl(newSettings.customBackendUrl)
+        }
         applySettingsToTts(newSettings)
 
         // Announce language change to user with immediate accessibility feedback
@@ -420,6 +492,75 @@ class MainViewModel(
                             speak("${strings.errorPrefix} $errorMsg. ${strings.retry}")
                         }
                     }
+
+                    ScanTask.GUIDED_TASK -> {
+                        val currentSession = _guidedTaskSession.value ?: GuidedTaskSession(goal = "make tea")
+                        speak(strings.processingGuidedTask)
+
+                        val historyJson = if (currentSession.stepHistory.isNotEmpty()) {
+                            JSONArray(currentSession.stepHistory).toString()
+                        } else null
+
+                        val result = repository.analyzeImage(
+                            imageBytes = bytesToAnalyze ?: ByteArray(0),
+                            task = TaskTypes.GUIDED_TASK,
+                            language = lang.code,
+                            taskGoal = currentSession.goal,
+                            stepHistory = historyJson
+                        )
+
+                        result.onSuccess { response ->
+                            _isAnalyzing.value = false
+                            if (_guidedTaskSession.value?.state == GuidedTaskState.STOPPED || _currentScreen.value is Screen.Home) {
+                                Log.i(tag, "Ignoring guided task response received after session stopped.")
+                                return@onSuccess
+                            }
+                            if (response.shouldRecapture) {
+                                val reason = response.reason ?: strings.recaptureBlurryReason
+                                speak("${strings.recaptureAnnouncement} $reason")
+                                navigateTo(Screen.GuidedTask(goal = currentSession.goal, currentInstruction = reason))
+                            } else {
+                                val instruction = response.answer ?: if (lang == AppLanguage.HINDI) {
+                                    "निर्देश उपलब्ध नहीं हो सका।"
+                                } else {
+                                    "No instruction could be determined."
+                                }
+                                val isComplete = response.isTaskComplete == true
+                                val needsClarify = response.needsClarification == true
+                                val stepIdx = response.stepIndex ?: (currentSession.currentStepIndex + 1)
+                                val updatedHistory = currentSession.stepHistory.toMutableList().apply {
+                                    add("Step $stepIdx: $instruction")
+                                }
+
+                                val newState = when {
+                                    isComplete -> GuidedTaskState.COMPLETED
+                                    needsClarify -> GuidedTaskState.AWAITING_CLARIFICATION
+                                    else -> GuidedTaskState.INSTRUCTING
+                                }
+
+                                _guidedTaskSession.value = currentSession.copy(
+                                    state = newState,
+                                    currentStepIndex = stepIdx,
+                                    currentInstruction = instruction,
+                                    needsClarification = needsClarify,
+                                    isTaskComplete = isComplete,
+                                    stepHistory = updatedHistory
+                                )
+
+                                navigateTo(Screen.GuidedTask(goal = currentSession.goal, currentInstruction = instruction))
+                                speak(instruction)
+                            }
+                        }.onFailure { ex ->
+                            _isAnalyzing.value = false
+                            val errorMsg = ex.message ?: if (lang == AppLanguage.HINDI) {
+                                "कार्य निर्देश प्राप्त करने में विफलता।"
+                            } else {
+                                "Failed to obtain task instructions."
+                            }
+                            _analysisError.value = errorMsg
+                            speak("${strings.errorPrefix} $errorMsg. ${strings.retry}")
+                        }
+                    }
                 }
             } catch (e: CancellationException) {
                 _isAnalyzing.value = false
@@ -437,11 +578,14 @@ class MainViewModel(
         }
     }
 
-    fun cancelAnalysis() {
+    fun cancelAnalysis(task: ScanTask = ScanTask.DESCRIBE_SURROUNDINGS, navigateToCamera: Boolean = true) {
         analysisJob?.cancel()
         _isAnalyzing.value = false
         _analysisError.value = null
         val strings = AppStrings.get(_settings.value.language)
+        if (navigateToCamera) {
+            navigateTo(Screen.Camera(task))
+        }
         speak(strings.analysisCancelledSpoken)
     }
 
@@ -456,18 +600,27 @@ class MainViewModel(
         val lang = _settings.value.language
         val strings = AppStrings.get(lang)
 
-        if (isMock || bytes == null) {
+        if (isMock) {
             val answer = MockData.answerQuestion(query, contextContent, lang.code)
             onAnswerReceived(answer)
             speak(answer)
             return
         }
 
+        if (bytes == null) {
+            val noImageMsg = strings.noImageForQuestionNotice
+            onAnswerReceived(noImageMsg)
+            speak(noImageMsg)
+            return
+        }
+
         viewModelScope.launch {
             speak(strings.findingAnswerSpoken)
+            val hasTextContext = !contextContent.isNullOrBlank()
+            val taskType = if (hasTextContext) TaskTypes.READ_TEXT else TaskTypes.DESCRIBE_IMAGE
             val result = repository.analyzeImage(
                 imageBytes = bytes,
-                task = TaskTypes.DESCRIBE_IMAGE,
+                task = taskType,
                 question = query,
                 ocrText = contextContent,
                 language = lang.code
@@ -492,6 +645,61 @@ class MainViewModel(
         }
     }
 
+    // Guided Task Actions
+    fun startGuidedTask(goal: String = "make tea", autoNavigateToCamera: Boolean = true) {
+        _guidedTaskSession.value = GuidedTaskSession(
+            goal = goal,
+            state = GuidedTaskState.OBSERVING,
+            currentStepIndex = 0,
+            currentInstruction = "",
+            stepHistory = emptyList()
+        )
+        val strings = AppStrings.get(_settings.value.language)
+        speak(strings.guidedTaskSpokenIntro)
+        if (autoNavigateToCamera) {
+            navigateTo(Screen.Camera(ScanTask.GUIDED_TASK))
+        }
+    }
+
+    fun advanceGuidedTask() {
+        val session = _guidedTaskSession.value ?: return
+        if (session.isTaskComplete) {
+            navigateTo(Screen.Home, clearBackstack = true)
+            return
+        }
+        if (repository.isMockMode()) {
+            analyzeCapturedImage(ScanTask.GUIDED_TASK, _capturedBytes.value)
+        } else {
+            // For real-world live assistance, require fresh visual observation of the updated workspace
+            rescanGuidedTask()
+        }
+    }
+
+    fun repeatGuidedTaskInstruction() {
+        val instruction = _guidedTaskSession.value?.currentInstruction
+        if (!instruction.isNullOrBlank()) {
+            speak(instruction)
+        }
+    }
+
+    fun rescanGuidedTask() {
+        val strings = AppStrings.get(_settings.value.language)
+        speak(strings.cameraInstructionSpoken)
+        navigateTo(Screen.Camera(ScanTask.GUIDED_TASK))
+    }
+
+    fun stopGuidedTask() {
+        analysisJob?.cancel()
+        _isAnalyzing.value = false
+        stopSpeech()
+        _guidedTaskSession.value = _guidedTaskSession.value?.copy(
+            state = GuidedTaskState.STOPPED
+        )
+        val strings = AppStrings.get(_settings.value.language)
+        speak(strings.taskStoppedSpoken)
+        navigateTo(Screen.Home, clearBackstack = true)
+    }
+
     // Spoken feedback methods
     fun speak(text: String, isScreenAnnouncement: Boolean = false) {
         // If TalkBack is active and this is just an auto screen title announcement, suppress raw TTS
@@ -514,6 +722,22 @@ class MainViewModel(
         ttsManager?.setSpeechRate(rate)
         val strings = AppStrings.get(_settings.value.language)
         speak(strings.testSpeechSentence)
+    }
+
+    fun testBackendConnection(url: String? = null, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            if (!url.isNullOrBlank()) {
+                repository.updateBaseUrl(url)
+            }
+            val isHealthy = repository.checkBackendHealth()
+            val strings = AppStrings.get(_settings.value.language)
+            if (isHealthy) {
+                speak(strings.connectionStatusConnected)
+            } else {
+                speak(strings.connectionStatusFailed)
+            }
+            onResult(isHealthy)
+        }
     }
 
     override fun onCleared() {

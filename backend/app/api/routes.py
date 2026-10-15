@@ -66,6 +66,14 @@ async def analyze_image(
         default="en",
         description="Optional requested response language code: 'en' (default) or 'hi'.",
     ),
+    task_goal: Optional[str] = Form(
+        default=None,
+        description="Optional goal for guided task mode (e.g., 'make tea').",
+    ),
+    step_history: Optional[str] = Form(
+        default=None,
+        description="Optional history/context of completed steps for guided task mode.",
+    ),
     settings: Settings = Depends(get_settings),
     validation_service: ImageValidationService = Depends(get_validation_service),
     vision_provider: VisionProvider = Depends(get_provider),
@@ -73,7 +81,7 @@ async def analyze_image(
     """Validate image quality and dispatch to the configured vision provider."""
     # 1. Validate task
     normalized_task = task.strip().lower()
-    valid_tasks = {TaskType.DESCRIBE_IMAGE.value, TaskType.READ_TEXT.value}
+    valid_tasks = {TaskType.DESCRIBE_IMAGE.value, TaskType.READ_TEXT.value, TaskType.GUIDED_TASK.value}
     if normalized_task not in valid_tasks:
         logger.warning("Unsupported task requested: '%s'", task)
         return JSONResponse(
@@ -83,7 +91,7 @@ async def analyze_image(
                 task=task,
                 answer=None,
                 should_recapture=False,
-                reason=f"Unsupported task '{task}'. Allowed tasks are 'describe_image' and 'read_text'.",
+                reason=f"Unsupported task '{task}'. Allowed tasks are 'describe_image', 'read_text', and 'guided_task'.",
             ).model_dump(),
         )
 
@@ -175,6 +183,15 @@ async def analyze_image(
             response = await vision_provider.describe_image(
                 image_bytes,
                 question=question,
+                mime_type=mime_type,
+                language=target_language,
+            )
+        elif normalized_task == TaskType.GUIDED_TASK.value:
+            response = await vision_provider.guide_task(
+                image_bytes,
+                goal=task_goal or question or "assist user",
+                step_history=step_history,
+                user_response=question,
                 mime_type=mime_type,
                 language=target_language,
             )

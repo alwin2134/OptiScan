@@ -52,6 +52,7 @@ fun ProcessingScreen(
     val statusText = when (task) {
         ScanTask.READ_TEXT -> strings.processingReadingText
         ScanTask.DESCRIBE_SURROUNDINGS -> strings.processingDescribing
+        ScanTask.GUIDED_TASK -> strings.processingGuidedTask
     }
 
     LaunchedEffect(task) {
