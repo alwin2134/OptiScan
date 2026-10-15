@@ -93,6 +93,7 @@ fun OptiScanApp(
                 is Screen.Home -> {
                     HomeScreen(
                         language = settings.language,
+                        useOnDeviceAi = settings.useOnDeviceAi,
                         onNavigateToCamera = { task ->
                             performHaptic()
                             viewModel.navigateTo(Screen.Camera(task))
@@ -188,6 +189,10 @@ fun OptiScanApp(
                     },
                     onAnnounceProcessing = {
                         // Analysis initiation already announces processing status in analyzeCapturedImage
+                    },
+                    onFallbackToOnDeviceAi = {
+                        performHaptic()
+                        viewModel.navigateTo(Screen.OnDeviceConversation)
                     },
                     modifier = modifier.fillMaxSize()
                 )

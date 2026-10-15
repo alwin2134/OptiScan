@@ -50,6 +50,7 @@ import com.optiscan.app.ui.theme.TextWhite
 @Composable
 fun HomeScreen(
     language: AppLanguage = AppLanguage.ENGLISH,
+    useOnDeviceAi: Boolean = false,
     onNavigateToCamera: (ScanTask) -> Unit,
     onStartGuidedTask: () -> Unit = { onNavigateToCamera(ScanTask.GUIDED_TASK) },
     onNavigateToAskQuestion: () -> Unit,
@@ -111,9 +112,14 @@ fun HomeScreen(
             )
 
             // Action 2: Describe Surroundings
+            val describeSubtitle = if (useOnDeviceAi) {
+                if (language == AppLanguage.HINDI) "ऑफलाइन Qwen2-VL AI • परिवेश का विवरण" else "Offline Qwen2-VL AI • Describe surroundings"
+            } else {
+                strings.describeSurroundingsSubtitle
+            }
             AccessibleActionCard(
                 title = strings.describeSurroundingsTitle,
-                subtitle = strings.describeSurroundingsSubtitle,
+                subtitle = describeSubtitle,
                 icon = Icons.Default.Visibility,
                 accentColor = ActionSecondaryGreen,
                 onClick = { onNavigateToCamera(ScanTask.DESCRIBE_SURROUNDINGS) }

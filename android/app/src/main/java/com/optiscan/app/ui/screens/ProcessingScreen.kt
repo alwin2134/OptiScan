@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -34,7 +35,7 @@ import com.optiscan.app.ui.theme.TextWhite
 /**
  * Screen E: Processing
  * Displays large accessible progress indicator during active network analysis,
- * or an accessible error card with retry action if analysis fails.
+ * or an accessible error card with retry and on-device offline fallback if analysis fails.
  */
 @Composable
 fun ProcessingScreen(
@@ -46,6 +47,7 @@ fun ProcessingScreen(
     onRetry: () -> Unit,
     onCancel: () -> Unit,
     onAnnounceProcessing: () -> Unit,
+    onFallbackToOnDeviceAi: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val strings = AppStrings.get(language)
@@ -128,10 +130,22 @@ fun ProcessingScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 if (errorMessage != null) {
+                    if (onFallbackToOnDeviceAi != null) {
+                        OptiScanButton(
+                            text = strings.analyzeWithOnDeviceAi,
+                            onClick = onFallbackToOnDeviceAi,
+                            variant = ButtonVariant.PRIMARY,
+                            icon = Icons.Default.PhoneAndroid,
+                            contentDesc = "${strings.analyzeWithOnDeviceAi} button",
+                            minHeight = 56,
+                            bypassTripleTap = true
+                        )
+                    }
+
                     OptiScanButton(
                         text = strings.retry,
                         onClick = onRetry,
-                        variant = ButtonVariant.PRIMARY,
+                        variant = if (onFallbackToOnDeviceAi != null) ButtonVariant.SECONDARY else ButtonVariant.PRIMARY,
                         icon = Icons.Default.Refresh,
                         contentDesc = "${strings.retry} button",
                         minHeight = 56,

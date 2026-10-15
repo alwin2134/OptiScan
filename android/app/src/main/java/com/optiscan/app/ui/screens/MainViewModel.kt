@@ -250,8 +250,13 @@ class MainViewModel(
             is Screen.ImagePreview -> {
                 // Volume Up: Use photo; Volume Down: Retake
                 if (isVolumeUp) {
-                    speak(if (isHindi) "फोटो का उपयोग कर रहे हैं। विश्लेषण जारी है।" else "Using photo. Analyzing.")
-                    navigateTo(Screen.Processing(screen.task, screen.imageBytes))
+                    if (_settings.value.useOnDeviceAi) {
+                        speak(if (isHindi) "फोटो का उपयोग कर रहे हैं। ऑन-डिवाइस AI विश्लेषण जारी है।" else "Using photo. Analyzing on device.")
+                        navigateTo(Screen.OnDeviceConversation)
+                    } else {
+                        speak(if (isHindi) "फोटो का उपयोग कर रहे हैं। विश्लेषण जारी है।" else "Using photo. Analyzing.")
+                        navigateTo(Screen.Processing(screen.task, screen.imageBytes))
+                    }
                 } else {
                     speak(if (isHindi) "फोटो दोबारा खींच रहे हैं। कैमरा खुला।" else "Retaking photo. Camera opened.")
                     navigateTo(Screen.Camera(screen.task))
@@ -489,7 +494,16 @@ class MainViewModel(
                                 "Failed to analyze scene surroundings."
                             }
                             _analysisError.value = errorMsg
-                            speak("${strings.errorPrefix} $errorMsg. ${strings.retry}")
+                            val isNetworkFailure = errorMsg.contains("Could not connect", ignoreCase = true) ||
+                                errorMsg.contains("timed out", ignoreCase = true) ||
+                                errorMsg.contains("connection", ignoreCase = true) ||
+                                errorMsg.contains("नेटवर्क", ignoreCase = true)
+                            val announcement = if (isNetworkFailure) {
+                                "${strings.errorPrefix} $errorMsg. ${strings.onDeviceFallbackSpokenAnnouncement}"
+                            } else {
+                                "${strings.errorPrefix} $errorMsg. ${strings.retry}"
+                            }
+                            speak(announcement)
                         }
                     }
 

@@ -182,7 +182,9 @@ data class AppStrings(
     val onDeviceAiDiagnosticsSubtitle: String,
     val onDeviceAiModeButton: String,
     val onDeviceAiModeSubtitle: String,
-    val onDeviceAiPrivacyBadge: String
+    val onDeviceAiPrivacyBadge: String,
+    val analyzeWithOnDeviceAi: String,
+    val onDeviceFallbackSpokenAnnouncement: String
 ) {
     fun taskTitle(task: ScanTask): String = when (task) {
         ScanTask.READ_TEXT -> readTextTitle
@@ -371,7 +373,9 @@ data class AppStrings(
             onDeviceAiDiagnosticsSubtitle = "Display model load time and inference time for developer benchmarking.",
             onDeviceAiModeButton = "On-Device AI Conversation",
             onDeviceAiModeSubtitle = "Private • Offline • Qwen2-VL",
-            onDeviceAiPrivacyBadge = "🔒 On-device: your images never leave this phone"
+            onDeviceAiPrivacyBadge = "🔒 On-device: your images never leave this phone",
+            analyzeWithOnDeviceAi = "Analyze with On-Device AI (Offline)",
+            onDeviceFallbackSpokenAnnouncement = "Backend server unreachable. You can analyze this image offline with On-Device AI using the button below."
         )
 
         val Hindi = AppStrings(
@@ -548,7 +552,9 @@ data class AppStrings(
             onDeviceAiDiagnosticsSubtitle = "डेवलपर बेंचमार्किंग के लिए मॉडल लोड समय और अनुमान समय प्रदर्शित करें।",
             onDeviceAiModeButton = "ऑन-डिवाइस AI बातचीत",
             onDeviceAiModeSubtitle = "निजी • ऑफलाइन • Qwen2-VL",
-            onDeviceAiPrivacyBadge = "🔒 ऑन-डिवाइस: आपकी छवियां इस फोन से बाहर नहीं जातीं"
+            onDeviceAiPrivacyBadge = "🔒 ऑन-डिवाइस: आपकी छवियां इस फोन से बाहर नहीं जातीं",
+            analyzeWithOnDeviceAi = "ऑन-डिवाइस AI से विश्लेषण करें (ऑफलाइन)",
+            onDeviceFallbackSpokenAnnouncement = "बैकएंड सर्वर से कनेक्ट नहीं हो सका। आप नीचे दिए गए बटन से ऑन-डिवाइस AI द्वारा विश्लेषण कर सकते हैं।"
         )
 
         fun get(language: AppLanguage): AppStrings = when (language) {
