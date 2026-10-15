@@ -25,8 +25,18 @@ sealed interface Screen {
     data class Camera(val task: ScanTask) : Screen
     data class ImagePreview(val task: ScanTask, val imageBytes: ByteArray? = null) : Screen
     data class Processing(val task: ScanTask, val imageBytes: ByteArray? = null) : Screen
-    data class ReadTextResult(val text: String = MockData.SAMPLE_PRODUCT_LABEL) : Screen
-    data class DescriptionResult(val description: String = MockData.SAMPLE_SCENE_DESCRIPTION) : Screen
+    data class ReadTextResult(
+        val text: String = MockData.SAMPLE_PRODUCT_LABEL,
+        val shouldRecapture: Boolean = false,
+        val recaptureReason: String? = null,
+        val isLiveResult: Boolean = true
+    ) : Screen
+    data class DescriptionResult(
+        val description: String = MockData.SAMPLE_SCENE_DESCRIPTION,
+        val shouldRecapture: Boolean = false,
+        val recaptureReason: String? = null,
+        val isLiveResult: Boolean = true
+    ) : Screen
     data class AskQuestion(
         val contextTitle: String? = null,
         val contextContent: String? = null
@@ -41,7 +51,8 @@ data class AppSettings(
     val speechRate: Float = 1.0f,
     val voiceFeedbackEnabled: Boolean = true,
     val hapticFeedbackEnabled: Boolean = true,
-    val textSizeScale: Float = 1.0f
+    val textSizeScale: Float = 1.0f,
+    val useMockBackend: Boolean = false
 ) {
     val textSizeLabel: String
         get() = when {

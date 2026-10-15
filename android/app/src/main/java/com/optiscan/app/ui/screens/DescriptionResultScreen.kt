@@ -23,15 +23,21 @@ import com.optiscan.app.ui.components.OptiScanButton
 import com.optiscan.app.ui.components.ResultCard
 import com.optiscan.app.ui.components.ScreenTitle
 import com.optiscan.app.ui.components.SpeechControls
+import com.optiscan.app.ui.components.StatusLevel
+import com.optiscan.app.ui.components.StatusMessage
 import com.optiscan.app.ui.theme.BackgroundNearBlack
 
 /**
  * Screen G: Image Description Results
- * Presents scene understanding descriptions with spoken playback and conversational follow-up triggers.
+ * Presents scene understanding descriptions with spoken playback,
+ * prominent recapture guidance when image is blurry or dark, and conversational follow-up triggers.
  */
 @Composable
 fun DescriptionResultScreen(
     description: String = MockData.SAMPLE_SCENE_DESCRIPTION,
+    shouldRecapture: Boolean = false,
+    recaptureReason: String? = null,
+    isLiveResult: Boolean = true,
     isSpeaking: Boolean,
     onReadAloud: (String) -> Unit,
     onStopSpeech: () -> Unit,
@@ -42,7 +48,11 @@ fun DescriptionResultScreen(
     modifier: Modifier = Modifier
 ) {
     LaunchedEffect(Unit) {
-        onAnnounceResult("Scene description ready. Tap Read Aloud to listen.")
+        if (shouldRecapture) {
+            onAnnounceResult("Recapture recommended. ${recaptureReason ?: "Image is too blurry or dark. Tap Retake Photo to try again."}")
+        } else {
+            onAnnounceResult("Scene description ready. Tap Read Aloud to listen.")
+        }
     }
 
     Scaffold(
@@ -59,55 +69,82 @@ fun DescriptionResultScreen(
         ) {
             // Screen Header
             ScreenTitle(
-                title = "Scene Description",
-                subtitle = "Surroundings and walking path analysis",
+                title = if (shouldRecapture) "Recapture Photo" else "Scene Description",
+                subtitle = if (shouldRecapture) "Image quality check notification" else "Surroundings and walking path analysis",
                 onBackClick = onBackToHome,
                 backContentDescription = "Return to Home screen"
             )
 
-            // Result Card
-            ResultCard(
-                title = "Your Surroundings",
-                content = description,
-                noticeText = "DEMO NOTICE: Natural-language AI description demonstration."
-            )
+            if (shouldRecapture) {
+                // High-visibility Recapture Warning
+                StatusMessage(
+                    title = "Recapture Recommended",
+                    message = recaptureReason ?: "The captured image is too blurry or low quality for a reliable description.",
+                    level = StatusLevel.WARNING
+                )
 
-            // Speech Controls
-            SpeechControls(
-                isSpeaking = isSpeaking,
-                onReadAloud = { onReadAloud(description) },
-                onStopSpeech = onStopSpeech,
-                readAloudText = "Read Aloud Description"
-            )
+                Spacer(modifier = Modifier.height(8.dp))
 
-            Spacer(modifier = Modifier.height(4.dp))
+                OptiScanButton(
+                    text = "Retake Photo",
+                    onClick = onCaptureAnother,
+                    variant = ButtonVariant.PRIMARY,
+                    icon = Icons.Default.CameraAlt,
+                    contentDesc = "Retake photo with camera"
+                )
 
-            // Action: Ask a Question
-            OptiScanButton(
-                text = "Ask a Question About This Scene",
-                onClick = { onAskQuestion(description) },
-                variant = ButtonVariant.PRIMARY,
-                icon = Icons.AutoMirrored.Filled.HelpOutline,
-                contentDesc = "Ask a follow up question about this room description"
-            )
+                OptiScanButton(
+                    text = "Back to Home",
+                    onClick = onBackToHome,
+                    variant = ButtonVariant.OUTLINE,
+                    icon = Icons.Default.Home,
+                    contentDesc = "Return to Home screen button"
+                )
+            } else {
+                // Result Card
+                ResultCard(
+                    title = "Your Surroundings",
+                    content = description,
+                    noticeText = if (isLiveResult) "AI Scene Analysis by Google Gemini" else "Simulated demonstration output"
+                )
 
-            // Action: Capture Another Image
-            OptiScanButton(
-                text = "Capture Another Scene",
-                onClick = onCaptureAnother,
-                variant = ButtonVariant.SURFACE,
-                icon = Icons.Default.CameraAlt,
-                contentDesc = "Capture another image button"
-            )
+                // Speech Controls
+                SpeechControls(
+                    isSpeaking = isSpeaking,
+                    onReadAloud = { onReadAloud(description) },
+                    onStopSpeech = onStopSpeech,
+                    readAloudText = "Read Aloud Description"
+                )
 
-            // Navigation: Back to Home
-            OptiScanButton(
-                text = "Back to Home",
-                onClick = onBackToHome,
-                variant = ButtonVariant.OUTLINE,
-                icon = Icons.Default.Home,
-                contentDesc = "Return to Home screen button"
-            )
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Action: Ask a Question
+                OptiScanButton(
+                    text = "Ask a Question About This Scene",
+                    onClick = { onAskQuestion(description) },
+                    variant = ButtonVariant.PRIMARY,
+                    icon = Icons.AutoMirrored.Filled.HelpOutline,
+                    contentDesc = "Ask a follow up question about this room description"
+                )
+
+                // Action: Capture Another Image
+                OptiScanButton(
+                    text = "Capture Another Scene",
+                    onClick = onCaptureAnother,
+                    variant = ButtonVariant.SURFACE,
+                    icon = Icons.Default.CameraAlt,
+                    contentDesc = "Capture another image button"
+                )
+
+                // Navigation: Back to Home
+                OptiScanButton(
+                    text = "Back to Home",
+                    onClick = onBackToHome,
+                    variant = ButtonVariant.OUTLINE,
+                    icon = Icons.Default.Home,
+                    contentDesc = "Return to Home screen button"
+                )
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
         }

@@ -20,8 +20,10 @@ class ValidationResult:
     should_recapture: bool
     reason: Optional[str] = None
     format: Optional[str] = None
+    mime_type: Optional[str] = None
     width: int = 0
     height: int = 0
+
 
 
 class ImageValidationService:
@@ -73,12 +75,22 @@ class ImageValidationService:
                 reason=f"Image file exceeds maximum allowed size of {max_mb:.1f} MB.",
             )
 
+        # Configure Pillow decompression bomb protection limit
+        Image.MAX_IMAGE_PIXELS = self.settings.max_image_pixels
+
         # 2. Decode image with Pillow
         try:
             image = Image.open(io.BytesIO(image_bytes))
             image.verify()  # Verify file header and integrity
             # Reopen because verify() closes or alters some image internal pointers
             image = Image.open(io.BytesIO(image_bytes))
+        except Image.DecompressionBombError as e:
+            logger.warning("Decompression bomb protection triggered: %s", str(e))
+            return ValidationResult(
+                is_valid=False,
+                should_recapture=True,
+                reason="Image resolution or pixel count exceeds safe decompression limits.",
+            )
         except Exception as e:
             logger.warning("Failed to decode image: %s", str(e))
             return ValidationResult(
@@ -87,7 +99,7 @@ class ImageValidationService:
                 reason="The uploaded file is not a valid or readable image.",
             )
 
-        # 3. Format check
+        # 3. Format check and MIME type resolution
         image_format = (image.format or "").upper()
         if image_format not in self.settings.allowed_image_formats:
             logger.warning("Unsupported image format: %s", image_format)
@@ -99,9 +111,15 @@ class ImageValidationService:
                 format=image_format,
             )
 
+        mime_type = "image/jpeg"
+        if image_format == "PNG":
+            mime_type = "image/png"
+        elif image_format == "WEBP":
+            mime_type = "image/webp"
+
         width, height = image.size
 
-        # 4. Dimension check
+        # 4. Dimension & pixel limit checks
         if width < self.settings.min_image_dimension or height < self.settings.min_image_dimension:
             logger.info("Image dimensions too small: %dx%d", width, height)
             return ValidationResult(
@@ -109,6 +127,23 @@ class ImageValidationService:
                 should_recapture=True,
                 reason=f"Image resolution ({width}x{height}) is too low for reliable visual recognition.",
                 format=image_format,
+                mime_type=mime_type,
+                width=width,
+                height=height,
+            )
+
+        if (
+            width > self.settings.max_image_dimension
+            or height > self.settings.max_image_dimension
+            or (width * height) > self.settings.max_image_pixels
+        ):
+            logger.warning("Image dimensions (%dx%d) exceed maximum allowed boundaries", width, height)
+            return ValidationResult(
+                is_valid=False,
+                should_recapture=True,
+                reason=f"Image resolution ({width}x{height}) exceeds maximum supported limits ({self.settings.max_image_dimension}px).",
+                format=image_format,
+                mime_type=mime_type,
                 width=width,
                 height=height,
             )
@@ -127,12 +162,17 @@ class ImageValidationService:
                     should_recapture=True,
                     reason="The image is completely dark or uniform. Ensure the camera lens is unobstructed.",
                     format=image_format,
+                    mime_type=mime_type,
                     width=width,
                     height=height,
                 )
 
             # Edge detection sharpness heuristic
+            # Note: Edge variance heuristic is an approximation suitable for detecting severe motion
+            # blur or completely out-of-focus captures; threshold is calibrated to 8.0 to avoid false positives.
             edges = gray.filter(ImageFilter.FIND_EDGES)
+            if width > 4 and height > 4:
+                edges = edges.crop((2, 2, width - 2, height - 2))
             edge_stat = ImageStat.Stat(edges)
             edge_variance = edge_stat.var[0]
 
@@ -144,6 +184,7 @@ class ImageValidationService:
                     should_recapture=True,
                     reason="Image is too blurry. Please hold steady and recapture.",
                     format=image_format,
+                    mime_type=mime_type,
                     width=width,
                     height=height,
                 )
@@ -151,11 +192,17 @@ class ImageValidationService:
             logger.error("Error during image quality analysis: %s", str(e))
             # If sharpness check fails unexpectedly, do not block the request if basic image was valid
             pass
+        finally:
+            try:
+                image.close()
+            except Exception:
+                pass
 
         return ValidationResult(
             is_valid=True,
             should_recapture=False,
             format=image_format,
+            mime_type=mime_type,
             width=width,
             height=height,
         )

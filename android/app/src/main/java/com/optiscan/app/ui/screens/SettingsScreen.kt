@@ -217,7 +217,17 @@ fun SettingsScreen(
                 }
             )
 
-            // Section 5: About & Version
+            // Section 5: Offline Mock Mode
+            SettingToggleCard(
+                title = "Offline Mock Mode",
+                description = "Use local simulated responses instead of connecting to the live AI backend.",
+                checked = settings.useMockBackend,
+                onCheckedChange = { checked ->
+                    onUpdateSettings(settings.copy(useMockBackend = checked))
+                }
+            )
+
+            // Section 6: About & Version
             Column(
                 modifier = Modifier
                     .fillMaxWidth()

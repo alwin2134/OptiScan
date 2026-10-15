@@ -1,14 +1,24 @@
 """Comprehensive tests for /analyze endpoint, image validation, OCR handling, and error states."""
 
 import io
-from unittest.mock import AsyncMock, patch
+import pytest
 from fastapi.testclient import TestClient
 from PIL import Image, ImageDraw
 
+from app.api.routes import get_provider
 from app.main import app
-from app.services.vision_provider import VisionProviderError
+from app.services.vision_provider import MockVisionProvider, VisionProviderError
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def ensure_mock_provider():
+    mock_prov = MockVisionProvider()
+    app.dependency_overrides[get_provider] = lambda: mock_prov
+    yield mock_prov
+    app.dependency_overrides.pop(get_provider, None)
+
 
 
 def create_test_image(width: int = 200, height: int = 200, format: str = "JPEG") -> bytes:
@@ -212,10 +222,16 @@ def test_analyze_provider_failure_returns_sanitized_502():
     files = {"image": ("test.jpg", img_bytes, "image/jpeg")}
     data = {"task": "describe_image"}
 
-    with patch("app.services.vision_provider.MockVisionProvider.describe_image", new_callable=AsyncMock) as mock_desc:
-        mock_desc.side_effect = VisionProviderError("Upstream AI service timeout")
+    class FailingProvider(MockVisionProvider):
+        async def describe_image(self, *args, **kwargs):
+            raise VisionProviderError("Upstream AI service timeout")
+
+    app.dependency_overrides[get_provider] = lambda: FailingProvider()
+    try:
         response = client.post("/analyze", files=files, data=data)
         assert response.status_code == 502
+    finally:
+        app.dependency_overrides.pop(get_provider, None)
         payload = response.json()
         assert payload["status"] == "error"
         # Stack trace must not be in response

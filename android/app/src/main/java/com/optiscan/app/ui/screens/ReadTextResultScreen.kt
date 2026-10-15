@@ -41,11 +41,15 @@ import com.optiscan.app.ui.theme.TextLightGrey
 
 /**
  * Screen F: Read Text Results
- * Displays extracted text from fictional product label with Read Aloud, Copy, Q&A, and Home navigation.
+ * Displays extracted text from product labels or documents with Read Aloud, Copy, Q&A,
+ * and high-visibility recapture guidance if the image is too blurry.
  */
 @Composable
 fun ReadTextResultScreen(
     text: String = MockData.SAMPLE_PRODUCT_LABEL,
+    shouldRecapture: Boolean = false,
+    recaptureReason: String? = null,
+    isLiveResult: Boolean = true,
     isSpeaking: Boolean,
     onReadAloud: (String) -> Unit,
     onStopSpeech: () -> Unit,
@@ -59,7 +63,11 @@ fun ReadTextResultScreen(
     var showCopyBanner by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        onAnnounceResult("Text extracted from image. Fictional product label displayed. Tap Read Aloud to listen.")
+        if (shouldRecapture) {
+            onAnnounceResult("Recapture recommended. ${recaptureReason ?: "Text is too blurry to read. Tap Retake Photo to try again."}")
+        } else {
+            onAnnounceResult("Text extracted from image. Tap Read Aloud to listen.")
+        }
     }
 
     Scaffold(
@@ -76,70 +84,97 @@ fun ReadTextResultScreen(
         ) {
             // Screen Header
             ScreenTitle(
-                title = "Extracted Text",
-                subtitle = "Optical Character Recognition Results",
+                title = if (shouldRecapture) "Recapture Document" else "Extracted Text",
+                subtitle = if (shouldRecapture) "Image quality check notification" else "Optical Character Recognition Results",
                 onBackClick = onBackToHome,
                 backContentDescription = "Return to Home screen"
             )
 
-            // Copy feedback announcement banner
-            if (showCopyBanner) {
+            if (shouldRecapture) {
+                // High-visibility Recapture Warning
                 StatusMessage(
-                    message = "All extracted text copied to your clipboard.",
-                    level = StatusLevel.SUCCESS,
-                    title = "Copied"
+                    title = "Recapture Recommended",
+                    message = recaptureReason ?: "The text is too blurry or low contrast to read reliably.",
+                    level = StatusLevel.WARNING
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OptiScanButton(
+                    text = "Retake Photo",
+                    onClick = onCaptureAnother,
+                    variant = ButtonVariant.PRIMARY,
+                    icon = Icons.Default.CameraAlt,
+                    contentDesc = "Retake photo with camera"
+                )
+
+                OptiScanButton(
+                    text = "Back to Home",
+                    onClick = onBackToHome,
+                    variant = ButtonVariant.OUTLINE,
+                    icon = Icons.Default.Home,
+                    contentDesc = "Return to Home screen button"
+                )
+            } else {
+                // Copy feedback announcement banner
+                if (showCopyBanner) {
+                    StatusMessage(
+                        message = "All extracted text copied to your clipboard.",
+                        level = StatusLevel.SUCCESS,
+                        title = "Copied"
+                    )
+                }
+
+                // Text Result Card
+                ResultCard(
+                    title = "Document Text",
+                    content = text,
+                    noticeText = if (isLiveResult) "AI Text Extraction by Google Gemini" else "Simulated demonstration output",
+                    onCopyClick = {
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        val clip = ClipData.newPlainText("OptiScan Extracted Text", text)
+                        clipboard.setPrimaryClip(clip)
+                        showCopyBanner = true
+                    }
+                )
+
+                // Primary Read Aloud & Stop Speech Controls
+                SpeechControls(
+                    isSpeaking = isSpeaking,
+                    onReadAloud = { onReadAloud(text) },
+                    onStopSpeech = onStopSpeech,
+                    readAloudText = "Read Aloud All Text"
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Action: Ask a Question about this text
+                OptiScanButton(
+                    text = "Ask a Question About This Text",
+                    onClick = { onAskQuestion(text) },
+                    variant = ButtonVariant.PRIMARY,
+                    icon = Icons.AutoMirrored.Filled.HelpOutline,
+                    contentDesc = "Ask a question about the medicine label text"
+                )
+
+                // Action: Capture Another Image
+                OptiScanButton(
+                    text = "Capture Another Document",
+                    onClick = onCaptureAnother,
+                    variant = ButtonVariant.SURFACE,
+                    icon = Icons.Default.CameraAlt,
+                    contentDesc = "Capture another image button"
+                )
+
+                // Navigation: Back to Home
+                OptiScanButton(
+                    text = "Back to Home",
+                    onClick = onBackToHome,
+                    variant = ButtonVariant.OUTLINE,
+                    icon = Icons.Default.Home,
+                    contentDesc = "Return to Home screen button"
                 )
             }
-
-            // Text Result Card
-            ResultCard(
-                title = "Product Label Text",
-                content = text,
-                noticeText = "DEMO NOTICE: Fictional product label text for demonstration.",
-                onCopyClick = {
-                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    val clip = ClipData.newPlainText("OptiScan Extracted Text", text)
-                    clipboard.setPrimaryClip(clip)
-                    showCopyBanner = true
-                }
-            )
-
-            // Primary Read Aloud & Stop Speech Controls
-            SpeechControls(
-                isSpeaking = isSpeaking,
-                onReadAloud = { onReadAloud(text) },
-                onStopSpeech = onStopSpeech,
-                readAloudText = "Read Aloud All Text"
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Action: Ask a Question about this text
-            OptiScanButton(
-                text = "Ask a Question About This Text",
-                onClick = { onAskQuestion(text) },
-                variant = ButtonVariant.PRIMARY,
-                icon = Icons.AutoMirrored.Filled.HelpOutline,
-                contentDesc = "Ask a question about the medicine label text"
-            )
-
-            // Action: Capture Another Image
-            OptiScanButton(
-                text = "Capture Another Document",
-                onClick = onCaptureAnother,
-                variant = ButtonVariant.SURFACE,
-                icon = Icons.Default.CameraAlt,
-                contentDesc = "Capture another image button"
-            )
-
-            // Navigation: Back to Home
-            OptiScanButton(
-                text = "Back to Home",
-                onClick = onBackToHome,
-                variant = ButtonVariant.OUTLINE,
-                icon = Icons.Default.Home,
-                contentDesc = "Return to Home screen button"
-            )
 
             Spacer(modifier = Modifier.height(16.dp))
         }

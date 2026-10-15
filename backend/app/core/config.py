@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     """Central configuration for OptiScan backend service."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(".env", "backend/.env"),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -39,14 +39,17 @@ class Settings(BaseSettings):
     chunk_read_size_bytes: int = 64 * 1024        # 64 KB chunk size for streaming upload reads
     allowed_image_formats: List[str] = ["JPEG", "PNG", "WEBP", "MPO"]
     min_image_dimension: int = 64
-    blur_threshold: float = 12.0  # Sharpness variance threshold for recapture
+    max_image_dimension: int = 8192
+    max_image_pixels: int = 25_000_000  # Pillow decompression bomb protection ceiling (~25 MP)
+    blur_threshold: float = 8.0  # Sharpness edge-variance threshold for recapture (calibrated for mobile)
+
 
     # AI Vision Provider Configuration
     # Options: "mock", "gemini", "openai"
     vision_provider: str = "mock"
     vision_api_key: Optional[str] = None
-    vision_model_name: str = "gemini-1.5-flash"
-    vision_request_timeout_seconds: float = 15.0
+    vision_model_name: str = "gemini-2.5-flash"
+    vision_request_timeout_seconds: float = 25.0
 
     @field_validator("vision_provider")
     @classmethod

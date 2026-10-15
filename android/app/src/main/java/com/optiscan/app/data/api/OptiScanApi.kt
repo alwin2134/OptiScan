@@ -32,6 +32,7 @@ interface OptiScanApi {
     suspend fun analyzeImage(
         @Part image: MultipartBody.Part,
         @Part("task") task: RequestBody,
-        @Part("question") question: RequestBody? = null
+        @Part("question") question: RequestBody? = null,
+        @Part("ocr_text") ocrText: RequestBody? = null
     ): AnalysisResponse
 }

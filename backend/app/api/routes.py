@@ -146,14 +146,20 @@ async def analyze_image(
         )
 
     # 4. Dispatch to Vision Provider safely
+    mime_type = val_result.mime_type or "image/jpeg"
     try:
         if normalized_task == TaskType.DESCRIBE_IMAGE.value:
-            response = await vision_provider.describe_image(image_bytes, question=question)
+            response = await vision_provider.describe_image(
+                image_bytes,
+                question=question,
+                mime_type=mime_type,
+            )
         else:
             response = await vision_provider.process_ocr(
                 image_bytes,
                 ocr_text=ocr_text,
                 question=question,
+                mime_type=mime_type,
             )
         return response
     except VisionProviderError as e:

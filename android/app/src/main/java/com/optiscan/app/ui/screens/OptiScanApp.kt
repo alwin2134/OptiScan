@@ -35,6 +35,8 @@ fun OptiScanApp(
     val isSpeaking by viewModel.isSpeaking.collectAsState()
     val capturedBitmap by viewModel.capturedBitmap.collectAsState()
     val hasCameraPermission by viewModel.hasCameraPermission.collectAsState()
+    val isAnalyzing by viewModel.isAnalyzing.collectAsState()
+    val analysisError by viewModel.analysisError.collectAsState()
 
     fun performHaptic() {
         if (settings.hapticFeedbackEnabled) {
@@ -106,17 +108,17 @@ fun OptiScanApp(
                                 if (result.isSuccess) {
                                     val bytes = result.getOrNull()
                                     val bmp = bytes?.let { viewModel.cameraManager.bytesToBitmap(it) }
-                                    viewModel.setCapturedBitmap(bmp)
+                                    viewModel.setCapturedImage(bmp, bytes)
                                     viewModel.navigateTo(Screen.ImagePreview(screen.task, bytes))
                                 } else {
                                     // Fallback to simulated capture
-                                    viewModel.setCapturedBitmap(null)
+                                    viewModel.setCapturedImage(null, null)
                                     viewModel.navigateTo(Screen.ImagePreview(screen.task))
                                 }
                             }
                         } else {
                             // Simulated capture for demo
-                            viewModel.setCapturedBitmap(null)
+                            viewModel.setCapturedImage(null, null)
                             viewModel.navigateTo(Screen.ImagePreview(screen.task))
                         }
                     },
@@ -152,14 +154,16 @@ fun OptiScanApp(
             is Screen.Processing -> {
                 ProcessingScreen(
                     task = screen.task,
-                    onProcessingComplete = {
-                        performHaptic()
-                        when (screen.task) {
-                            ScanTask.READ_TEXT -> viewModel.navigateTo(Screen.ReadTextResult())
-                            ScanTask.DESCRIBE_SURROUNDINGS -> viewModel.navigateTo(Screen.DescriptionResult())
-                        }
+                    isProcessing = isAnalyzing,
+                    errorMessage = analysisError,
+                    onStartAnalysis = {
+                        viewModel.analyzeCapturedImage(screen.task, screen.imageBytes)
+                    },
+                    onRetry = {
+                        viewModel.analyzeCapturedImage(screen.task, screen.imageBytes)
                     },
                     onCancel = {
+                        viewModel.cancelAnalysis()
                         viewModel.navigateTo(Screen.Camera(screen.task))
                     },
                     onAnnounceProcessing = {
@@ -173,6 +177,9 @@ fun OptiScanApp(
             is Screen.ReadTextResult -> {
                 ReadTextResultScreen(
                     text = screen.text,
+                    shouldRecapture = screen.shouldRecapture,
+                    recaptureReason = screen.recaptureReason,
+                    isLiveResult = screen.isLiveResult,
                     isSpeaking = isSpeaking,
                     onReadAloud = { txt -> viewModel.speak(txt) },
                     onStopSpeech = { viewModel.stopSpeech() },
@@ -198,6 +205,9 @@ fun OptiScanApp(
             is Screen.DescriptionResult -> {
                 DescriptionResultScreen(
                     description = screen.description,
+                    shouldRecapture = screen.shouldRecapture,
+                    recaptureReason = screen.recaptureReason,
+                    isLiveResult = screen.isLiveResult,
                     isSpeaking = isSpeaking,
                     onReadAloud = { desc -> viewModel.speak(desc) },
                     onStopSpeech = { viewModel.stopSpeech() },
@@ -226,6 +236,9 @@ fun OptiScanApp(
                     isSpeaking = isSpeaking,
                     onSpeak = { query -> viewModel.speak(query) },
                     onStopSpeech = { viewModel.stopSpeech() },
+                    onSubmitQuestion = { query, onAnswer ->
+                        viewModel.askQuestion(query, screen.contextContent, onAnswer)
+                    },
                     onBackClick = { viewModel.navigateBack() },
                     onAnnounceScreen = {
                         viewModel.speak("Ask a Question. Tap the microphone to speak, or type your question below.")

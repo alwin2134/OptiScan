@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -22,19 +23,24 @@ import com.optiscan.app.navigation.ScanTask
 import com.optiscan.app.ui.components.ButtonVariant
 import com.optiscan.app.ui.components.LoadingIndicator
 import com.optiscan.app.ui.components.OptiScanButton
+import com.optiscan.app.ui.components.StatusLevel
+import com.optiscan.app.ui.components.StatusMessage
 import com.optiscan.app.ui.theme.BackgroundNearBlack
 import com.optiscan.app.ui.theme.TextLightGrey
 import com.optiscan.app.ui.theme.TextWhite
-import kotlinx.coroutines.delay
 
 /**
  * Screen E: Processing
- * Displays large accessible progress indicator and simulates analysis completion after a short delay.
+ * Displays large accessible progress indicator during active network analysis,
+ * or an accessible error card with retry action if analysis fails.
  */
 @Composable
 fun ProcessingScreen(
     task: ScanTask,
-    onProcessingComplete: () -> Unit,
+    isProcessing: Boolean = true,
+    errorMessage: String? = null,
+    onStartAnalysis: () -> Unit,
+    onRetry: () -> Unit,
     onCancel: () -> Unit,
     onAnnounceProcessing: () -> Unit,
     modifier: Modifier = Modifier
@@ -44,12 +50,11 @@ fun ProcessingScreen(
         ScanTask.DESCRIBE_SURROUNDINGS -> "Analyzing surroundings..."
     }
 
-    // Speak announcement once on mount
-    LaunchedEffect(Unit) {
-        onAnnounceProcessing()
-        // Simulate processing time for demo (1.8 seconds)
-        delay(1800)
-        onProcessingComplete()
+    LaunchedEffect(task) {
+        if (errorMessage == null) {
+            onAnnounceProcessing()
+            onStartAnalysis()
+        }
     }
 
     Scaffold(
@@ -70,36 +75,82 @@ fun ProcessingScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = "OptiScan Processing",
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = TextWhite
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Analyzing your image",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = TextLightGrey
-                )
+                if (errorMessage != null) {
+                    Text(
+                        text = "Analysis Issue",
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = TextWhite
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "We could not complete the image analysis.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = TextLightGrey
+                    )
 
-                Spacer(modifier = Modifier.height(36.dp))
+                    Spacer(modifier = Modifier.height(28.dp))
 
-                LoadingIndicator(
-                    statusText = statusText,
-                    detailText = "Please hold steady. Results will be read aloud momentarily."
-                )
+                    StatusMessage(
+                        title = "Service Notification",
+                        message = errorMessage,
+                        level = StatusLevel.ERROR
+                    )
+                } else {
+                    Text(
+                        text = "OptiScan Processing",
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = TextWhite
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Analyzing your image",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = TextLightGrey
+                    )
+
+                    Spacer(modifier = Modifier.height(36.dp))
+
+                    LoadingIndicator(
+                        statusText = if (isProcessing) statusText else "Preparing analysis...",
+                        detailText = "Please hold steady. Results will be read aloud momentarily."
+                    )
+                }
             }
 
-            // Cancel button
-            OptiScanButton(
-                text = "Cancel Analysis",
-                onClick = onCancel,
-                variant = ButtonVariant.SURFACE,
-                icon = Icons.Default.Close,
-                contentDesc = "Cancel image analysis and return to camera",
-                minHeight = 56,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
+            // Bottom Actions
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (errorMessage != null) {
+                    OptiScanButton(
+                        text = "Retry Analysis",
+                        onClick = onRetry,
+                        variant = ButtonVariant.PRIMARY,
+                        icon = Icons.Default.Refresh,
+                        contentDesc = "Retry image analysis button",
+                        minHeight = 56
+                    )
+
+                    OptiScanButton(
+                        text = "Return to Camera",
+                        onClick = onCancel,
+                        variant = ButtonVariant.SURFACE,
+                        icon = Icons.Default.Close,
+                        contentDesc = "Return to camera screen to retake photo",
+                        minHeight = 56
+                    )
+                } else {
+                    OptiScanButton(
+                        text = "Cancel Analysis",
+                        onClick = onCancel,
+                        variant = ButtonVariant.SURFACE,
+                        icon = Icons.Default.Close,
+                        contentDesc = "Cancel image analysis and return to camera",
+                        minHeight = 56
+                    )
+                }
+            }
         }
     }
 }

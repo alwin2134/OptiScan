@@ -77,6 +77,7 @@ fun AskQuestionScreen(
     isSpeaking: Boolean,
     onSpeak: (String) -> Unit,
     onStopSpeech: () -> Unit,
+    onSubmitQuestion: ((query: String, onAnswerReceived: (String) -> Unit) -> Unit)? = null,
     onBackClick: () -> Unit,
     onAnnounceScreen: () -> Unit,
     modifier: Modifier = Modifier
@@ -96,9 +97,15 @@ fun AskQuestionScreen(
     fun submitQuestion(query: String) {
         if (query.isBlank()) return
         recognizedQuestion = query
-        val answer = MockData.answerQuestion(query, contextContent)
-        answerText = answer
-        onSpeak(answer)
+        if (onSubmitQuestion != null) {
+            onSubmitQuestion(query) { answer ->
+                answerText = answer
+            }
+        } else {
+            val answer = MockData.answerQuestion(query, contextContent)
+            answerText = answer
+            onSpeak(answer)
+        }
     }
 
     fun triggerVoiceInput() {
