@@ -14,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Icon
@@ -52,6 +53,7 @@ fun HomeScreen(
     onNavigateToAskQuestion: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onAnnounceHome: () -> Unit,
+    onNavigateToOnDeviceConversation: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val strings = AppStrings.get(language)
@@ -123,6 +125,17 @@ fun HomeScreen(
                 accentColor = ActionPrimaryBlue,
                 onClick = onNavigateToAskQuestion
             )
+
+            // Action 4: On-Device AI Voice Conversation (Offline Mode)
+            if (onNavigateToOnDeviceConversation != null) {
+                AccessibleActionCard(
+                    title = strings.onDeviceAiModeButton,
+                    subtitle = strings.onDeviceAiModeSubtitle,
+                    icon = Icons.Default.PhoneAndroid,
+                    accentColor = ActionSecondaryGreen,
+                    onClick = onNavigateToOnDeviceConversation
+                )
+            }
 
             Spacer(modifier = Modifier.weight(1f, fill = false))
 

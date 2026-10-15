@@ -22,6 +22,8 @@ import com.optiscan.app.ui.components.HapticType
 import com.optiscan.app.ui.components.LocalAccessibleAnnouncer
 import com.optiscan.app.ui.components.LocalHapticFeedbackHandler
 import com.optiscan.app.ui.components.LocalTripleTapModeEnabled
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.optiscan.app.ondevice.OnDeviceConversationViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -45,6 +47,7 @@ fun OptiScanApp(
     val isAnalyzing by viewModel.isAnalyzing.collectAsState()
     val analysisError by viewModel.analysisError.collectAsState()
     val strings = AppStrings.get(settings.language)
+    val onDeviceViewModel: OnDeviceConversationViewModel = viewModel()
 
     fun performHaptic(type: HapticType = HapticType.CONFIRMED_ACTION) {
         if (settings.hapticFeedbackEnabled) {
@@ -105,6 +108,10 @@ fun OptiScanApp(
                         onAnnounceHome = {
                             viewModel.speak(strings.homeSpokenAnnouncement, isScreenAnnouncement = true)
                         },
+                        onNavigateToOnDeviceConversation = {
+                            performHaptic()
+                            viewModel.navigateTo(Screen.OnDeviceConversation)
+                        },
                         modifier = modifier.fillMaxSize()
                     )
                 }
@@ -143,7 +150,11 @@ fun OptiScanApp(
                     language = settings.language,
                     onUsePhoto = {
                         performHaptic()
-                        viewModel.navigateTo(Screen.Processing(screen.task, screen.imageBytes))
+                        if (settings.useOnDeviceAi) {
+                            viewModel.navigateTo(Screen.OnDeviceConversation)
+                        } else {
+                            viewModel.navigateTo(Screen.Processing(screen.task, screen.imageBytes))
+                        }
                     },
                     onRetakePhoto = {
                         performHaptic()
@@ -274,6 +285,31 @@ fun OptiScanApp(
                     onAnnounceSettings = {
                         viewModel.speak("${strings.settingsTitle}. ${strings.settingsSubtitle}")
                     },
+                    onOpenOnDeviceConversation = {
+                        performHaptic()
+                        viewModel.navigateTo(Screen.OnDeviceConversation)
+                    },
+                    modifier = modifier.fillMaxSize()
+                )
+            }
+
+            is Screen.OnDeviceConversation -> {
+                OnDeviceConversationScreen(
+                    onDeviceViewModel = onDeviceViewModel,
+                    capturedBitmap = capturedBitmap,
+                    language = settings.language,
+                    isSpeaking = isSpeaking,
+                    onSpeak = { txt -> viewModel.speak(txt) },
+                    onStopSpeech = { viewModel.stopSpeech() },
+                    onCaptureNewPhoto = {
+                        performHaptic()
+                        viewModel.navigateTo(Screen.Camera(ScanTask.DESCRIBE_SURROUNDINGS))
+                    },
+                    onBackClick = {
+                        performHaptic()
+                        viewModel.navigateBack()
+                    },
+                    showDiagnostics = settings.showOnDeviceDiagnostics,
                     modifier = modifier.fillMaxSize()
                 )
             }

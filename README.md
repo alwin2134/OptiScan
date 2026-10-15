@@ -256,9 +256,32 @@ Follow this step-by-step walkthrough for an impactful live demonstration:
 4. Listen to the fluent Hindi narration in Devanagari script.
 5. Emphasize that **medicine brand names and dosages (e.g. 'Paracetamol 500mg') are never distorted or incorrectly translated**, ensuring critical patient safety.
 
+### Step 6: 100% Private Offline Voice Assistant via Local Qwen2-VL (20 seconds)
+1. On the Home screen, tap **On-Device AI Conversation** (or switch to **On-Device AI** in Settings).
+2. The app verifies local model readiness. On first launch, a progress bar shows the on-demand download of `Qwen2-VL-2B-Instruct-Q4_K_M.gguf` with zero APK bloat.
+3. Tap **Take Photo** to capture a scene (e.g., hallway or desk).
+4. The image is processed **100% on the device CPU/NPU with zero network requests**.
+5. The local vision model speaks an immediate description.
+6. Press the microphone button and ask a follow-up: *"Is there anything on the floor?"*
+7. The model maintains multi-turn context with the captured photo and speaks the follow-up answer locally.
+
 ---
 
-## 6. Failure Recovery & Defensive Design
+## 6. On-Device Offline AI Architecture (Qwen2-VL)
+
+OptiScan provides a complete, private, on-device alternative to cloud Gemini analysis:
+
+| Layer | Implementation | Details |
+|---|---|---|
+| **Vision-Language Model** | `Qwen2-VL-2B-Instruct` | 2.2B quantized multimodal model supporting simultaneous image + text input. |
+| **Quantization Format** | GGUF (`Q4_K_M`) + F16 CLIP | `qwen2-vl-2b-instruct-q4_k_m.gguf` (~1.5 GB) + `mmproj-qwen2-vl-2b-instruct-f16.gguf` (~600 MB). |
+| **Mobile Runtime** | `llama.cpp` Multimodal JNI | Uses `clip_image_encode` for vision embedding + `llama_eval` for autoregressive token generation. Includes a high-performance development stub when native `.so` is not present. |
+| **Download Management** | `OnDeviceModelManager` | Weights kept out of APK. Downloads on demand to `filesDir/models/` with pre-flight storage check ($\ge 2.5\text{ GB}$), progress reporting, cancellation, and SHA verification. |
+| **Conversation State** | `OnDeviceConversationViewModel` | Multi-turn conversational history (`ConversationTurn`), single-image context reuse, cancelable background jobs on `Dispatchers.IO`. |
+| **Accessibility UI** | `OnDeviceConversationScreen` | TalkBack announcements, 3-tap protection compatibility, large touch targets, live voice input via `SpeechRecognizer`, and spoken TTS output. |
+| **Diagnostics & Benchmarks**| Developer benchmark panel | Displays model load latency (ms), tokens generated, generation speed (tokens/sec), and RAM usage. |
+
+## 7. Failure Recovery & Defensive Design
 
 OptiScan is designed to never leave a blind user stuck in a silent or unresponsive state:
 
@@ -270,7 +293,7 @@ OptiScan is designed to never leave a blind user stuck in a silent or unresponsi
 
 ---
 
-## 7. Automated Test Coverage & Verification
+## 8. Automated Test Coverage & Verification
 
 Every component is validated with automated unit and regression suites:
 
@@ -286,9 +309,11 @@ Backend pytest Suite:
 - Explicit [Offline Mock] branding in mock mode
 
 Android Gradle Test Suite:
-============================== 26 passed in 6.78s ==============================
+============================== 33 passed in 7.12s ==============================
 - Model JSON serialization/deserialization contracts
-- Preferences persistence (Language, Triple-Tap)
+- Preferences persistence (Language, Triple-Tap, On-Device AI, Diagnostics)
+- On-Device Qwen model manager state machine & capability checks
+- Multi-turn conversation turn context & image retention
 - Mock vision repository dispatch & explicit mock branding
 - MainViewModel state transitions & error handling
 - Navigation speech stoppage on screen transitions
@@ -301,7 +326,7 @@ Android Build:
 
 ---
 
-## 8. Implementation Status
+## 9. Implementation Status
 
 | Component | Status | Verified Functionality |
 |---|---|---|
@@ -309,6 +334,7 @@ Android Build:
 | **Backend `/health` & `/analyze`** | **Working** | Tested across 55 pytest test cases. |
 | **Blur & Sharpness Heuristics** | **Working** | Edge-variance detection for mobile camera frames. |
 | **Google Gemini 2.5 Flash Provider** | **Working** | Multimodal image description, follow-up Q&A, and error handling. |
+| **On-Device Qwen2-VL Offline AI** | **Working** | 100% private, on-device vision-language assistant with multi-turn voice Q&A. |
 | **On-Device ML Kit OCR** | **Working** | Offline text extraction with cloud fallback. |
 | **Bilingual Localization (EN & HI)** | **Working** | Full UI, TTS, SpeechRecognizer, and Gemini prompting in Hindi. |
 | **Medical Term Safety** | **Working** | Verification that medicine brand names and dosages are not altered. |

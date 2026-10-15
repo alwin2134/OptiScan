@@ -42,6 +42,7 @@ sealed interface Screen {
         val contextContent: String? = null
     ) : Screen
     data object Settings : Screen
+    data object OnDeviceConversation : Screen
 }
 
 /**
@@ -68,7 +69,11 @@ data class AppSettings(
     val textSizeScale: Float = 1.0f,
     val useMockBackend: Boolean = false,
     val tripleTapNavigationEnabled: Boolean = true,
-    val language: AppLanguage = AppLanguage.ENGLISH
+    val language: AppLanguage = AppLanguage.ENGLISH,
+    /** When true, use on-device Qwen2-VL instead of Gemini cloud backend */
+    val useOnDeviceAi: Boolean = false,
+    /** Show model load/inference benchmark info (developer mode) */
+    val showOnDeviceDiagnostics: Boolean = false
 ) {
     val textSizeLabel: String
         get() = when {

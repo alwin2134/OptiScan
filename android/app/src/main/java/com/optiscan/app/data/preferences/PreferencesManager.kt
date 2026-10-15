@@ -24,6 +24,8 @@ class PreferencesManager(context: Context) {
         val textSizeScale = prefs.getFloat(KEY_TEXT_SIZE_SCALE, 1.0f)
         val useMockBackend = prefs.getBoolean(KEY_USE_MOCK_BACKEND, false)
         val tripleTapNavigation = prefs.getBoolean(KEY_TRIPLE_TAP_NAVIGATION, true)
+        val useOnDeviceAi = prefs.getBoolean(KEY_USE_ON_DEVICE_AI, false)
+        val showDiagnostics = prefs.getBoolean(KEY_SHOW_ON_DEVICE_DIAGNOSTICS, false)
 
         return AppSettings(
             speechRate = speechRate,
@@ -32,7 +34,9 @@ class PreferencesManager(context: Context) {
             textSizeScale = textSizeScale,
             useMockBackend = useMockBackend,
             tripleTapNavigationEnabled = tripleTapNavigation,
-            language = AppLanguage.fromCode(langCode)
+            language = AppLanguage.fromCode(langCode),
+            useOnDeviceAi = useOnDeviceAi,
+            showOnDeviceDiagnostics = showDiagnostics
         )
     }
 
@@ -48,6 +52,8 @@ class PreferencesManager(context: Context) {
             .putFloat(KEY_TEXT_SIZE_SCALE, settings.textSizeScale)
             .putBoolean(KEY_USE_MOCK_BACKEND, settings.useMockBackend)
             .putBoolean(KEY_TRIPLE_TAP_NAVIGATION, settings.tripleTapNavigationEnabled)
+            .putBoolean(KEY_USE_ON_DEVICE_AI, settings.useOnDeviceAi)
+            .putBoolean(KEY_SHOW_ON_DEVICE_DIAGNOSTICS, settings.showOnDeviceDiagnostics)
             .apply()
     }
 
@@ -75,5 +81,7 @@ class PreferencesManager(context: Context) {
         const val KEY_TEXT_SIZE_SCALE = "key_text_size_scale"
         const val KEY_USE_MOCK_BACKEND = "key_use_mock_backend"
         const val KEY_TRIPLE_TAP_NAVIGATION = "key_triple_tap_navigation"
+        const val KEY_USE_ON_DEVICE_AI = "key_use_on_device_ai"
+        const val KEY_SHOW_ON_DEVICE_DIAGNOSTICS = "key_show_on_device_diagnostics"
     }
 }
