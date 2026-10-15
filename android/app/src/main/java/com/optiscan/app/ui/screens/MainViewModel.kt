@@ -1,7 +1,10 @@
 package com.optiscan.app.ui.screens
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
+import android.view.KeyEvent
+import android.view.accessibility.AccessibilityManager
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.optiscan.app.camera.CameraManager
@@ -21,7 +24,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
- * Single source of truth for OptiScan navigation, camera state, visual analysis, and accessibility settings.
+ * Single source of truth for OptiScan navigation, camera state, visual analysis, accessibility, and volume key control.
  */
 class MainViewModel(
     val cameraManager: CameraManager = CameraManager(),
@@ -54,6 +57,10 @@ class MainViewModel(
     private val _isSpeaking = MutableStateFlow(false)
     val isSpeaking: StateFlow<Boolean> = _isSpeaking.asStateFlow()
 
+    // TalkBack / Screen Reader State
+    private val _isTalkBackActive = MutableStateFlow(false)
+    val isTalkBackActive: StateFlow<Boolean> = _isTalkBackActive.asStateFlow()
+
     // Analysis State
     private var analysisJob: Job? = null
     private val _isAnalyzing = MutableStateFlow(false)
@@ -72,6 +79,14 @@ class MainViewModel(
             _isSpeaking.value = speaking
         }
         applySettingsToTts(_settings.value)
+    }
+
+    fun initAccessibility(context: Context) {
+        val am = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as? AccessibilityManager
+        _isTalkBackActive.value = am?.isTouchExplorationEnabled == true
+        am?.addTouchExplorationStateChangeListener { enabled ->
+            _isTalkBackActive.value = enabled
+        }
     }
 
     fun setCameraPermission(granted: Boolean) {
@@ -108,6 +123,93 @@ class MainViewModel(
             true
         } else {
             false
+        }
+    }
+
+    /**
+     * Executes photo capture from CameraX and moves to ImagePreview.
+     */
+    fun capturePhoto(context: Context, task: ScanTask) {
+        viewModelScope.launch {
+            speak("Capturing photo. Please hold steady.")
+            if (_hasCameraPermission.value) {
+                val result = cameraManager.capturePhoto(context)
+                if (result.isSuccess) {
+                    val bytes = result.getOrNull()
+                    val bmp = bytes?.let { cameraManager.bytesToBitmap(it) }
+                    setCapturedImage(bmp, bytes)
+                    navigateTo(Screen.ImagePreview(task, bytes))
+                } else {
+                    setCapturedImage(null, null)
+                    navigateTo(Screen.ImagePreview(task))
+                }
+            } else {
+                setCapturedImage(null, null)
+                navigateTo(Screen.ImagePreview(task))
+            }
+        }
+    }
+
+    /**
+     * Hardware Volume Key controller allowing blind users to operate the app physically.
+     */
+    fun handleVolumeKey(context: Context, keyCode: Int): Boolean {
+        val isVolumeUp = keyCode == KeyEvent.KEYCODE_VOLUME_UP
+        val isVolumeDown = keyCode == KeyEvent.KEYCODE_VOLUME_DOWN
+
+        if (!isVolumeUp && !isVolumeDown) return false
+
+        when (val screen = _currentScreen.value) {
+            is Screen.Camera -> {
+                // Shutter trigger on Camera screen
+                capturePhoto(context, screen.task)
+                return true
+            }
+
+            is Screen.ImagePreview -> {
+                // Volume Up: Use photo; Volume Down: Retake
+                if (isVolumeUp) {
+                    speak("Using photo. Analyzing.")
+                    navigateTo(Screen.Processing(screen.task, screen.imageBytes))
+                } else {
+                    speak("Retaking photo. Camera opened.")
+                    navigateTo(Screen.Camera(screen.task))
+                }
+                return true
+            }
+
+            is Screen.ReadTextResult -> {
+                // Toggle speech playback
+                if (_isSpeaking.value) {
+                    stopSpeech()
+                } else {
+                    speak(screen.text)
+                }
+                return true
+            }
+
+            is Screen.DescriptionResult -> {
+                // Toggle speech playback
+                if (_isSpeaking.value) {
+                    stopSpeech()
+                } else {
+                    speak(screen.description)
+                }
+                return true
+            }
+
+            is Screen.Welcome -> {
+                speak("Get Started activated. Welcome to OptiScan Home.")
+                navigateTo(Screen.Home, clearBackstack = true)
+                return true
+            }
+
+            is Screen.Home -> {
+                speak("OptiScan Home. Select Read Text, Describe Surroundings, or Ask a Question.")
+                return true
+            }
+
+            else -> return false
         }
     }
 
@@ -314,7 +416,13 @@ class MainViewModel(
     }
 
     // Spoken feedback methods
-    fun speak(text: String) {
+    fun speak(text: String, isScreenAnnouncement: Boolean = false) {
+        // If TalkBack is active and this is just an auto screen title announcement, suppress raw TTS
+        // so it doesn't talk over TalkBack's native heading announcement.
+        if (isScreenAnnouncement && _isTalkBackActive.value) {
+            return
+        }
+
         if (_settings.value.voiceFeedbackEnabled) {
             ttsManager?.speak(text)
         }

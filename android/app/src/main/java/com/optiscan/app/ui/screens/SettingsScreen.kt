@@ -227,6 +227,16 @@ fun SettingsScreen(
                 }
             )
 
+            // Section 6: 3-Tap Accessible Navigation Toggle
+            SettingToggleCard(
+                title = "3-Tap Navigation (Touch Protection)",
+                description = "Single tap: ignores action for safety. Double tap: speaks button description aloud. Triple tap: activates the action.",
+                checked = settings.tripleTapNavigationEnabled,
+                onCheckedChange = { checked ->
+                    onUpdateSettings(settings.copy(tripleTapNavigationEnabled = checked))
+                }
+            )
+
             // Section 6: About & Version
             Column(
                 modifier = Modifier

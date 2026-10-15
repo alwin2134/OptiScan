@@ -52,7 +52,8 @@ data class AppSettings(
     val voiceFeedbackEnabled: Boolean = true,
     val hapticFeedbackEnabled: Boolean = true,
     val textSizeScale: Float = 1.0f,
-    val useMockBackend: Boolean = false
+    val useMockBackend: Boolean = false,
+    val tripleTapNavigationEnabled: Boolean = true
 ) {
     val textSizeLabel: String
         get() = when {

@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import com.optiscan.app.ui.components.rememberAccessibleTapHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -141,15 +143,19 @@ fun CameraScreen(
                     style = MaterialTheme.typography.headlineMedium,
                     color = ActionPrimaryBlue
                 )
-                Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Point camera at the object and tap Capture.",
+                    text = "Point camera at object. Press volume button or tap Capture.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = TextWhite
                 )
             }
 
-            // Viewfinder Area
+            val viewfinderTapHandler = rememberAccessibleTapHandler(
+                description = "Camera Viewfinder. Double tap for guidance. Triple tap anywhere or press volume key to capture photo",
+                onAction = onCaptureClicked
+            )
+
+            // Viewfinder Area (Full-screen accessible tap target)
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -159,6 +165,15 @@ fun CameraScreen(
                     .clip(RoundedCornerShape(16.dp))
                     .background(SurfaceDarkCharcoal)
                     .border(2.dp, BorderSubtle, RoundedCornerShape(16.dp))
+                    .clickable(
+                        role = Role.Button,
+                        onClickLabel = "Capture photo from viewfinder",
+                        onClick = viewfinderTapHandler
+                    )
+                    .semantics {
+                        this.role = Role.Button
+                        this.contentDescription = "Camera viewfinder. Press physical volume button or triple tap anywhere to capture photo."
+                    }
             ) {
                 if (hasCameraPermission) {
                     CameraPreviewView(
@@ -204,7 +219,7 @@ fun CameraScreen(
                     onClick = onCaptureClicked,
                     variant = ButtonVariant.PRIMARY,
                     icon = Icons.Default.Camera,
-                    contentDesc = "Capture photo button. Double-tap to take picture.",
+                    contentDesc = "Capture photo button. Triple-tap or press physical volume key to take picture.",
                     minHeight = 72
                 )
             }

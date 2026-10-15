@@ -72,9 +72,14 @@ fun OptiScanButton(
     }
 
     val description = contentDesc ?: text
+    val accessibleOnClick = rememberAccessibleTapHandler(
+        description = description,
+        enabled = enabled,
+        onAction = onClick
+    )
 
     Button(
-        onClick = onClick,
+        onClick = accessibleOnClick,
         enabled = enabled,
         shape = RoundedCornerShape(14.dp),
         colors = ButtonDefaults.buttonColors(

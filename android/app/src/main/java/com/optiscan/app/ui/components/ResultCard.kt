@@ -29,6 +29,10 @@ import com.optiscan.app.ui.theme.SurfaceDarkCharcoal
 import com.optiscan.app.ui.theme.TextLightGrey
 import com.optiscan.app.ui.theme.TextWhite
 
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+
 /**
  * Result display card showing extracted OCR text or scene descriptions.
  */
@@ -47,7 +51,7 @@ fun ResultCard(
         modifier = modifier
             .fillMaxWidth()
             .semantics {
-                this.contentDescription = "$title. $content"
+                this.liveRegion = LiveRegionMode.Polite
             }
     ) {
         Column(
@@ -61,7 +65,9 @@ fun ResultCard(
                     text = title,
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics { heading() }
                 )
 
                 if (onCopyClick != null) {

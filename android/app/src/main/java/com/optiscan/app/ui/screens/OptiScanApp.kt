@@ -15,6 +15,11 @@ import androidx.compose.ui.platform.LocalContext
 import com.optiscan.app.navigation.ScanTask
 import com.optiscan.app.navigation.Screen
 import com.optiscan.app.ui.theme.OptiScanTheme
+import androidx.compose.runtime.CompositionLocalProvider
+import com.optiscan.app.ui.components.HapticType
+import com.optiscan.app.ui.components.LocalAccessibleAnnouncer
+import com.optiscan.app.ui.components.LocalHapticFeedbackHandler
+import com.optiscan.app.ui.components.LocalTripleTapModeEnabled
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -38,16 +43,17 @@ fun OptiScanApp(
     val isAnalyzing by viewModel.isAnalyzing.collectAsState()
     val analysisError by viewModel.analysisError.collectAsState()
 
-    fun performHaptic() {
+    fun performHaptic(type: HapticType = HapticType.CONFIRMED_ACTION) {
         if (settings.hapticFeedbackEnabled) {
             try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? android.os.VibratorManager
-                    vibratorManager?.defaultVibrator?.vibrate(VibrationEffect.createOneShot(45, VibrationEffect.DEFAULT_AMPLITUDE))
-                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    @Suppress("DEPRECATION")
+                val (durationMs, amplitude) = when (type) {
+                    HapticType.SUBTLE_TICK -> Pair(20L, 50)
+                    HapticType.DOUBLE_TICK -> Pair(35L, 120)
+                    HapticType.CONFIRMED_ACTION -> Pair(55L, 255)
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-                    vibrator?.vibrate(VibrationEffect.createOneShot(45, VibrationEffect.DEFAULT_AMPLITUDE))
+                    vibrator?.vibrate(VibrationEffect.createOneShot(durationMs, amplitude))
                 }
             } catch (_: Exception) {}
         }
@@ -58,41 +64,46 @@ fun OptiScanApp(
         viewModel.navigateBack()
     }
 
-    OptiScanTheme(textScale = settings.textSizeScale) {
-        when (val screen = currentScreen) {
-            is Screen.Welcome -> {
-                WelcomeScreen(
-                    onGetStarted = {
-                        performHaptic()
-                        viewModel.navigateTo(Screen.Home, clearBackstack = true)
-                    },
-                    onSpeakIntro = {
-                        viewModel.speak("Welcome to OptiScan. An accessible visual assistant for reading text and exploring your surroundings. Tap Get Started to begin.")
-                    },
-                    modifier = modifier.fillMaxSize()
-                )
-            }
+    CompositionLocalProvider(
+        LocalAccessibleAnnouncer provides { text -> viewModel.speak(text) },
+        LocalHapticFeedbackHandler provides { type -> performHaptic(type) },
+        LocalTripleTapModeEnabled provides settings.tripleTapNavigationEnabled
+    ) {
+        OptiScanTheme(textScale = settings.textSizeScale) {
+            when (val screen = currentScreen) {
+                is Screen.Welcome -> {
+                    WelcomeScreen(
+                        onGetStarted = {
+                            performHaptic()
+                            viewModel.navigateTo(Screen.Home, clearBackstack = true)
+                        },
+                        onSpeakIntro = {
+                            viewModel.speak("Welcome to OptiScan. An accessible visual assistant for reading text and exploring your surroundings. Tap Get Started to begin.")
+                        },
+                        modifier = modifier.fillMaxSize()
+                    )
+                }
 
-            is Screen.Home -> {
-                HomeScreen(
-                    onNavigateToCamera = { task ->
-                        performHaptic()
-                        viewModel.navigateTo(Screen.Camera(task))
-                    },
-                    onNavigateToAskQuestion = {
-                        performHaptic()
-                        viewModel.navigateTo(Screen.AskQuestion())
-                    },
-                    onNavigateToSettings = {
-                        performHaptic()
-                        viewModel.navigateTo(Screen.Settings)
-                    },
-                    onAnnounceHome = {
-                        viewModel.speak("OptiScan Home. Select Read Text, Describe Surroundings, or Ask a Question.")
-                    },
-                    modifier = modifier.fillMaxSize()
-                )
-            }
+                is Screen.Home -> {
+                    HomeScreen(
+                        onNavigateToCamera = { task ->
+                            performHaptic()
+                            viewModel.navigateTo(Screen.Camera(task))
+                        },
+                        onNavigateToAskQuestion = {
+                            performHaptic()
+                            viewModel.navigateTo(Screen.AskQuestion())
+                        },
+                        onNavigateToSettings = {
+                            performHaptic()
+                            viewModel.navigateTo(Screen.Settings)
+                        },
+                        onAnnounceHome = {
+                            viewModel.speak("OptiScan Home. Select Read Text, Describe Surroundings, or Ask a Question.", isScreenAnnouncement = true)
+                        },
+                        modifier = modifier.fillMaxSize()
+                    )
+                }
 
             is Screen.Camera -> {
                 CameraScreen(
@@ -101,32 +112,14 @@ fun OptiScanApp(
                     onRequestCameraPermission = onRequestCameraPermission,
                     onPreviewReady = onBindCamera,
                     onCaptureClicked = {
-                        performHaptic()
-                        if (hasCameraPermission) {
-                            CoroutineScope(Dispatchers.Main).launch {
-                                val result = viewModel.cameraManager.capturePhoto(context)
-                                if (result.isSuccess) {
-                                    val bytes = result.getOrNull()
-                                    val bmp = bytes?.let { viewModel.cameraManager.bytesToBitmap(it) }
-                                    viewModel.setCapturedImage(bmp, bytes)
-                                    viewModel.navigateTo(Screen.ImagePreview(screen.task, bytes))
-                                } else {
-                                    // Fallback to simulated capture
-                                    viewModel.setCapturedImage(null, null)
-                                    viewModel.navigateTo(Screen.ImagePreview(screen.task))
-                                }
-                            }
-                        } else {
-                            // Simulated capture for demo
-                            viewModel.setCapturedImage(null, null)
-                            viewModel.navigateTo(Screen.ImagePreview(screen.task))
-                        }
+                        performHaptic(HapticType.CONFIRMED_ACTION)
+                        viewModel.capturePhoto(context, screen.task)
                     },
                     onBackClick = {
                         viewModel.navigateBack()
                     },
                     onInstructionSpoken = {
-                        viewModel.speak("Point camera at the object and tap Capture Photo.")
+                        viewModel.speak("Point camera at object. Press volume button, tap viewfinder, or tap Capture Photo.", isScreenAnnouncement = true)
                     },
                     modifier = modifier.fillMaxSize()
                 )
@@ -267,3 +260,5 @@ fun OptiScanApp(
         }
     }
 }
+}
+

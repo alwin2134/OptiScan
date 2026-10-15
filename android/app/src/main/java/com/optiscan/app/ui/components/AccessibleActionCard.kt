@@ -52,7 +52,11 @@ fun AccessibleActionCard(
     modifier: Modifier = Modifier,
     accentColor: Color = ActionPrimaryBlue
 ) {
-    val accessibleDescription = "$title. $subtitle. Tap to open."
+    val accessibleDescription = "$title. $subtitle. Triple tap to open."
+    val accessibleOnClick = rememberAccessibleTapHandler(
+        description = accessibleDescription,
+        onAction = onClick
+    )
 
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -64,7 +68,7 @@ fun AccessibleActionCard(
             .clickable(
                 role = Role.Button,
                 onClickLabel = title,
-                onClick = onClick
+                onClick = accessibleOnClick
             )
             .semantics {
                 this.role = Role.Button
