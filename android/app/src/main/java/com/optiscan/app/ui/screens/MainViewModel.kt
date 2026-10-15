@@ -57,6 +57,9 @@ class MainViewModel(
     private val _hasCameraPermission = MutableStateFlow(false)
     val hasCameraPermission: StateFlow<Boolean> = _hasCameraPermission.asStateFlow()
 
+    private val _isCapturing = MutableStateFlow(false)
+    val isCapturing: StateFlow<Boolean> = _isCapturing.asStateFlow()
+
     // Speech State
     private val _isSpeaking = MutableStateFlow(false)
     val isSpeaking: StateFlow<Boolean> = _isSpeaking.asStateFlow()
@@ -127,7 +130,7 @@ class MainViewModel(
 
     // Navigation methods
     fun navigateTo(screen: Screen, clearBackstack: Boolean = false) {
-        if (screen is Screen.Camera || screen is Screen.Home || screen is Screen.Settings || screen is Screen.ImagePreview) {
+        if (screen !is Screen.ReadTextResult && screen !is Screen.DescriptionResult) {
             stopSpeech()
         }
         if (clearBackstack) {
@@ -154,12 +157,26 @@ class MainViewModel(
 
     /**
      * Executes photo capture from CameraX and moves to ImagePreview.
+     * Prevents overlapping concurrent captures and verifies camera permission.
      */
     fun capturePhoto(context: Context, task: ScanTask) {
+        if (_isCapturing.value) {
+            Log.d(tag, "Capture already in progress; ignoring duplicate request.")
+            return
+        }
+
+        val isHindi = _settings.value.language == AppLanguage.HINDI
+        val strings = AppStrings.get(_settings.value.language)
+
+        if (!_hasCameraPermission.value) {
+            speak(strings.cameraPermissionMessage)
+            return
+        }
+
+        _isCapturing.value = true
         viewModelScope.launch {
-            val isHindi = _settings.value.language == AppLanguage.HINDI
-            speak(if (isHindi) "फोटो खींच रहे हैं। कृपया फोन स्थिर रखें।" else "Capturing photo. Please hold steady.")
-            if (_hasCameraPermission.value) {
+            try {
+                speak(if (isHindi) "फोटो खींच रहे हैं। कृपया फोन स्थिर रखें।" else "Capturing photo. Please hold steady.")
                 val result = cameraManager.capturePhoto(context)
                 if (result.isSuccess) {
                     val bytes = result.getOrNull()
@@ -167,12 +184,15 @@ class MainViewModel(
                     setCapturedImage(bmp, bytes)
                     navigateTo(Screen.ImagePreview(task, bytes))
                 } else {
-                    setCapturedImage(null, null)
-                    navigateTo(Screen.ImagePreview(task))
+                    val err = if (isHindi) {
+                        "फोटो खींचने में विफलता। कृपया दोबारा प्रयास करें।"
+                    } else {
+                        "Failed to capture photo. Please try again."
+                    }
+                    speak(err)
                 }
-            } else {
-                setCapturedImage(null, null)
-                navigateTo(Screen.ImagePreview(task))
+            } finally {
+                _isCapturing.value = false
             }
         }
     }
@@ -447,11 +467,14 @@ class MainViewModel(
         }
     }
 
-    fun cancelAnalysis() {
+    fun cancelAnalysis(task: ScanTask = ScanTask.DESCRIBE_SURROUNDINGS, navigateToCamera: Boolean = true) {
         analysisJob?.cancel()
         _isAnalyzing.value = false
         _analysisError.value = null
         val strings = AppStrings.get(_settings.value.language)
+        if (navigateToCamera) {
+            navigateTo(Screen.Camera(task))
+        }
         speak(strings.analysisCancelledSpoken)
     }
 
@@ -482,9 +505,11 @@ class MainViewModel(
 
         viewModelScope.launch {
             speak(strings.findingAnswerSpoken)
+            val hasTextContext = !contextContent.isNullOrBlank()
+            val taskType = if (hasTextContext) TaskTypes.READ_TEXT else TaskTypes.DESCRIBE_IMAGE
             val result = repository.analyzeImage(
                 imageBytes = bytes,
-                task = TaskTypes.DESCRIBE_IMAGE,
+                task = taskType,
                 question = query,
                 ocrText = contextContent,
                 language = lang.code

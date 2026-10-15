@@ -59,22 +59,11 @@ fun ReadTextResultScreen(
     onAskQuestion: (contextContent: String) -> Unit,
     onCaptureAnother: () -> Unit,
     onBackToHome: () -> Unit,
-    onAnnounceResult: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val strings = AppStrings.get(language)
     var showCopyBanner by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        if (!isSpeaking) {
-            if (shouldRecapture) {
-                onAnnounceResult("${strings.recaptureAnnouncement} ${recaptureReason ?: strings.recaptureBlurryReason}")
-            } else {
-                onAnnounceResult(strings.textExtractedAnnouncement)
-            }
-        }
-    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -111,7 +100,8 @@ fun ReadTextResultScreen(
                     onClick = onCaptureAnother,
                     variant = ButtonVariant.PRIMARY,
                     icon = Icons.Default.CameraAlt,
-                    contentDesc = "${strings.retakePhoto} button"
+                    contentDesc = "${strings.retakePhoto} button",
+                    bypassTripleTap = true
                 )
 
                 OptiScanButton(

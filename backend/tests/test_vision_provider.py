@@ -333,3 +333,73 @@ async def test_gemini_provider_hindi_payload_construction():
         assert "Hindi" in user_prompt or "हिंदी" in user_prompt
 
 
+@pytest.mark.asyncio
+async def test_gemini_provider_ocr_with_question_and_image():
+    """Verify GeminiVisionProvider queries multimodal Gemini when question and image are provided."""
+    provider = GeminiVisionProvider(api_key="valid-key")
+    mock_post = AsyncMock()
+    mock_post.return_value = MagicMock(
+        status_code=200,
+        json=MagicMock(return_value={
+            "candidates": [{
+                "content": {"parts": [{"text": "The dosage is 500mg twice daily with meals."}]},
+                "finishReason": "STOP",
+            }]
+        }),
+    )
+
+    with patch("httpx.AsyncClient.post", mock_post):
+        response = await provider.process_ocr(
+            image_bytes=b"dummy-image-bytes",
+            ocr_text="AMOXICILLIN 500MG CAPSULE. TAKE 1 CAPSULE TWICE DAILY.",
+            question="What is the dosage?",
+            language="en",
+        )
+        assert response.status == "success"
+        assert response.task == "read_text"
+        assert "500mg twice daily" in response.answer
+        assert "Gemini vision reasoning" in response.reason
+
+        call_args = mock_post.call_args
+        payload = call_args.kwargs["json"]
+        parts = payload["contents"][0]["parts"]
+        assert len(parts) == 2  # Text prompt + inline image data
+        assert "User Question: 'What is the dosage?'" in parts[0]["text"]
+        assert "AMOXICILLIN 500MG" in parts[0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_gemini_provider_ocr_with_question_text_only():
+    """Verify GeminiVisionProvider queries Gemini with text-only prompt when image is omitted."""
+    provider = GeminiVisionProvider(api_key="valid-key")
+    mock_post = AsyncMock()
+    mock_post.return_value = MagicMock(
+        status_code=200,
+        json=MagicMock(return_value={
+            "candidates": [{
+                "content": {"parts": [{"text": "खुराक दिन में दो बार 1 कैप्सूल भोजन के साथ है।"}]},
+                "finishReason": "STOP",
+            }]
+        }),
+    )
+
+    with patch("httpx.AsyncClient.post", mock_post):
+        response = await provider.process_ocr(
+            image_bytes=b"",
+            ocr_text="PARACETAMOL 650MG",
+            question="खुराक क्या है?",
+            language="hi",
+        )
+        assert response.status == "success"
+        assert response.task == "read_text"
+        assert "खुराक" in response.answer
+        assert "Gemini reasoning using OCR context" in response.reason
+
+        call_args = mock_post.call_args
+        payload = call_args.kwargs["json"]
+        parts = payload["contents"][0]["parts"]
+        assert len(parts) == 1  # Text only, no image bytes
+        assert "PARACETAMOL 650MG" in parts[0]["text"]
+
+
+

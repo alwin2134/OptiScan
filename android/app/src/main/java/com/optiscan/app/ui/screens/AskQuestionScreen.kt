@@ -130,7 +130,6 @@ fun AskQuestionScreen(
         onStopSpeech()
         speechError = null
         isListening = true
-        onSpeak(strings.listeningNowSpoken)
         speechInputManager.startListening(language)
     }
 

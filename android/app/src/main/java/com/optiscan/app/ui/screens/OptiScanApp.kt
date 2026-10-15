@@ -169,12 +169,10 @@ fun OptiScanApp(
                         viewModel.analyzeCapturedImage(screen.task, screen.imageBytes)
                     },
                     onCancel = {
-                        viewModel.cancelAnalysis()
-                        viewModel.navigateTo(Screen.Camera(screen.task))
+                        viewModel.cancelAnalysis(screen.task)
                     },
                     onAnnounceProcessing = {
-                        val taskName = if (screen.task == ScanTask.READ_TEXT) strings.processingReadingText else strings.processingDescribing
-                        viewModel.speak(taskName)
+                        // Analysis initiation already announces processing status in analyzeCapturedImage
                     },
                     modifier = modifier.fillMaxSize()
                 )
@@ -192,7 +190,7 @@ fun OptiScanApp(
                     onStopSpeech = { viewModel.stopSpeech() },
                     onAskQuestion = { contextText ->
                         performHaptic()
-                        viewModel.navigateTo(Screen.AskQuestion(contextTitle = "Medicine Label", contextContent = contextText))
+                        viewModel.navigateTo(Screen.AskQuestion(contextTitle = strings.extractedTextTitle, contextContent = contextText))
                     },
                     onCaptureAnother = {
                         performHaptic()
@@ -201,11 +199,6 @@ fun OptiScanApp(
                     onBackToHome = {
                         performHaptic()
                         viewModel.navigateTo(Screen.Home, clearBackstack = true)
-                    },
-                    onAnnounceResult = { announcement ->
-                        if (!isSpeaking) {
-                            viewModel.speak(announcement)
-                        }
                     },
                     modifier = modifier.fillMaxSize()
                 )
@@ -223,7 +216,7 @@ fun OptiScanApp(
                     onStopSpeech = { viewModel.stopSpeech() },
                     onAskQuestion = { contextText ->
                         performHaptic()
-                        viewModel.navigateTo(Screen.AskQuestion(contextTitle = "Indoor Hallway", contextContent = contextText))
+                        viewModel.navigateTo(Screen.AskQuestion(contextTitle = strings.sceneDescriptionTitle, contextContent = contextText))
                     },
                     onCaptureAnother = {
                         performHaptic()
@@ -232,11 +225,6 @@ fun OptiScanApp(
                     onBackToHome = {
                         performHaptic()
                         viewModel.navigateTo(Screen.Home, clearBackstack = true)
-                    },
-                    onAnnounceResult = { announcement ->
-                        if (!isSpeaking) {
-                            viewModel.speak(announcement)
-                        }
                     },
                     modifier = modifier.fillMaxSize()
                 )

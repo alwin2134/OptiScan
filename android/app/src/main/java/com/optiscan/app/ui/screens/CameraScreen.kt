@@ -165,7 +165,13 @@ fun CameraScreen(
 
             val viewfinderTapHandler = rememberAccessibleTapHandler(
                 description = viewfinderDesc,
-                onAction = onCaptureClicked
+                onAction = {
+                    if (hasCameraPermission) {
+                        onCaptureClicked()
+                    } else {
+                        onRequestCameraPermission()
+                    }
+                }
             )
 
             // Viewfinder Area (Full-screen accessible tap target)
@@ -180,7 +186,7 @@ fun CameraScreen(
                     .border(2.dp, BorderSubtle, RoundedCornerShape(16.dp))
                     .clickable(
                         role = Role.Button,
-                        onClickLabel = "Capture photo from viewfinder",
+                        onClickLabel = if (hasCameraPermission) "Capture photo from viewfinder" else strings.grantCameraPermission,
                         onClick = viewfinderTapHandler
                     )
                     .semantics {
@@ -228,14 +234,25 @@ fun CameraScreen(
                     .fillMaxWidth()
                     .padding(bottom = 12.dp)
             ) {
-                OptiScanButton(
-                    text = strings.capturePhoto,
-                    onClick = onCaptureClicked,
-                    variant = ButtonVariant.PRIMARY,
-                    icon = Icons.Default.Camera,
-                    contentDesc = "${strings.capturePhoto} button",
-                    minHeight = 72
-                )
+                if (hasCameraPermission) {
+                    OptiScanButton(
+                        text = strings.capturePhoto,
+                        onClick = onCaptureClicked,
+                        variant = ButtonVariant.PRIMARY,
+                        icon = Icons.Default.Camera,
+                        contentDesc = "${strings.capturePhoto} button",
+                        minHeight = 72
+                    )
+                } else {
+                    OptiScanButton(
+                        text = strings.grantCameraPermission,
+                        onClick = onRequestCameraPermission,
+                        variant = ButtonVariant.PRIMARY,
+                        contentDesc = "${strings.grantCameraPermission} button",
+                        minHeight = 72,
+                        bypassTripleTap = true
+                    )
+                }
             }
         }
     }

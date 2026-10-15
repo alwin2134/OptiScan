@@ -1,5 +1,6 @@
 package com.optiscan.app
 
+import android.content.Context
 import android.graphics.Bitmap
 import com.optiscan.app.camera.CameraManager
 import com.optiscan.app.data.models.AnalysisResponse
@@ -451,4 +452,69 @@ class MainViewModelIntegrationTest {
         assertFalse(textResult.isLiveResult)
         assertEquals(AppStrings.English.onDeviceFallbackNotice, textResult.recaptureReason)
     }
+
+    @Test
+    fun testIsCapturingStateInitiallyFalse() = runTest(testDispatcher) {
+        assertFalse("isCapturing must initially be false", viewModel.isCapturing.value)
+    }
+
+    @Test
+    fun testCapturePhotoWithoutCameraPermissionSpeaksWarningAndAvoidsNavigation() = runTest(testDispatcher) {
+        viewModel.setCameraPermission(false)
+        val mockContext = org.mockito.Mockito.mock(Context::class.java)
+
+        viewModel.capturePhoto(mockContext, ScanTask.READ_TEXT)
+        advanceUntilIdle()
+
+        assertFalse("isCapturing must reset after permission denial check", viewModel.isCapturing.value)
+        assertFalse("Must not navigate to ImagePreview without camera permission", viewModel.currentScreen.value is Screen.ImagePreview)
+    }
+
+    @Test
+    fun testNavigateToStopsSpeechOnNavigationToAskQuestion() = runTest(testDispatcher) {
+        viewModel.speak("Ongoing text readout")
+        viewModel.navigateTo(Screen.AskQuestion(contextTitle = "Medicine Label", contextContent = "Sample OCR"))
+        assertFalse("Speech must be cancelled on navigating to AskQuestion screen", viewModel.isSpeaking.value)
+    }
+
+    @Test
+    fun testCancelAnalysisNavigatesToCameraAndSpeaksCancellation() = runTest(testDispatcher) {
+        viewModel.analyzeCapturedImage(ScanTask.READ_TEXT, sampleBytes)
+        viewModel.cancelAnalysis(ScanTask.READ_TEXT)
+        advanceUntilIdle()
+
+        assertFalse("isAnalyzing must be false after cancellation", viewModel.isAnalyzing.value)
+        val currentScreen = viewModel.currentScreen.value
+        assertTrue("Must navigate back to Camera on cancellation", currentScreen is Screen.Camera)
+        assertEquals(ScanTask.READ_TEXT, (currentScreen as Screen.Camera).task)
+    }
+
+    @Test
+    fun testAskQuestionWithOcrTextRoutesReadTextTask() = runTest(testDispatcher) {
+        viewModel.setCapturedImage(null, sampleBytes)
+        fakeRepository.analyzeResult = Result.success(
+            AnalysisResponse(
+                status = StatusTypes.SUCCESS,
+                task = TaskTypes.READ_TEXT,
+                answer = "Take 1 tablet every 4 to 6 hours.",
+                shouldRecapture = false
+            )
+        )
+
+        var answeredQuery: String? = null
+        val ocrContext = "Ibuprofen 200mg - Take 1 tablet every 4 to 6 hours as needed."
+        viewModel.askQuestion(
+            query = "What is the frequency of dosage?",
+            contextContent = ocrContext
+        ) { answer ->
+            answeredQuery = answer
+        }
+
+        advanceUntilIdle()
+        assertNotNull(answeredQuery)
+        assertEquals("Take 1 tablet every 4 to 6 hours.", answeredQuery)
+        assertEquals(TaskTypes.READ_TEXT, fakeRepository.capturedTask)
+        assertEquals(ocrContext, fakeRepository.capturedOcrText)
+    }
 }
+
