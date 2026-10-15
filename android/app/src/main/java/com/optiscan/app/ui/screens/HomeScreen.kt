@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,12 +44,13 @@ import com.optiscan.app.ui.theme.TextWhite
 
 /**
  * Screen B: Home
- * Displays three primary, full-width actions for TalkBack and low-vision accessibility.
+ * Displays accessible, full-width actions for TalkBack and low-vision accessibility.
  */
 @Composable
 fun HomeScreen(
     language: AppLanguage = AppLanguage.ENGLISH,
     onNavigateToCamera: (ScanTask) -> Unit,
+    onStartGuidedTask: () -> Unit = { onNavigateToCamera(ScanTask.GUIDED_TASK) },
     onNavigateToAskQuestion: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onAnnounceHome: () -> Unit,
@@ -115,7 +117,16 @@ fun HomeScreen(
                 onClick = { onNavigateToCamera(ScanTask.DESCRIBE_SURROUNDINGS) }
             )
 
-            // Action 3: Ask a Question
+            // Action 3: Guided Task Assistance
+            AccessibleActionCard(
+                title = strings.guidedTaskActionTitle,
+                subtitle = strings.guidedTaskActionSubtitle,
+                icon = Icons.Default.TaskAlt,
+                accentColor = ActionSecondaryGreen,
+                onClick = onStartGuidedTask
+            )
+
+            // Action 4: Ask a Question
             AccessibleActionCard(
                 title = strings.askQuestionTitle,
                 subtitle = strings.askQuestionSubtitle,

@@ -59,6 +59,7 @@ data class AppStrings(
     val processingSubtitle: String,
     val processingReadingText: String,
     val processingDescribing: String,
+    val processingGuidedTask: String,
     val preparingAnalysis: String,
     val processingDetail: String,
     val analysisIssueTitle: String,
@@ -118,6 +119,26 @@ data class AppStrings(
     val speechNotAvailableWarning: String,
     val micPermissionRequiredWarning: String,
 
+    // Guided Task Mode
+    val guidedTaskTitle: String,
+    val guidedTaskSubtitle: String,
+    val guidedTaskActionTitle: String,
+    val guidedTaskActionSubtitle: String,
+    val guidedTaskSpokenIntro: String,
+    val nextStep: String,
+    val repeatStep: String,
+    val scanAgain: String,
+    val stopTask: String,
+    val taskCompleted: String,
+    val stepLabel: String,
+    val workspacePrompt: String,
+    val observationTitle: String,
+    val instructionTitle: String,
+    val clarificationPrompt: String,
+    val taskStoppedSpoken: String,
+    val safetyWarningTitle: String,
+    val safetyWarningMessage: String,
+
     // Settings Screen
     val settingsTitle: String,
     val settingsSubtitle: String,
@@ -157,11 +178,13 @@ data class AppStrings(
     fun taskTitle(task: ScanTask): String = when (task) {
         ScanTask.READ_TEXT -> readTextTitle
         ScanTask.DESCRIBE_SURROUNDINGS -> describeSurroundingsTitle
+        ScanTask.GUIDED_TASK -> guidedTaskTitle
     }
 
     fun taskSubtitle(task: ScanTask): String = when (task) {
         ScanTask.READ_TEXT -> readTextSubtitle
         ScanTask.DESCRIBE_SURROUNDINGS -> describeSurroundingsSubtitle
+        ScanTask.GUIDED_TASK -> guidedTaskSubtitle
     }
 
     companion object {
@@ -216,6 +239,7 @@ data class AppStrings(
             processingSubtitle = "Analyzing your image",
             processingReadingText = "Reading printed text. Please hold steady.",
             processingDescribing = "Analyzing surroundings. Please hold steady.",
+            processingGuidedTask = "Analyzing guided task instructions. Please hold steady.",
             preparingAnalysis = "Preparing analysis...",
             processingDetail = "Please hold steady. Results will be read aloud momentarily.",
             analysisIssueTitle = "Analysis Issue",
@@ -274,6 +298,26 @@ data class AppStrings(
             findingAnswerSpoken = "Finding answer to your question...",
             speechNotAvailableWarning = "Speech recognition is not available on this device. Please type your question.",
             micPermissionRequiredWarning = "Microphone permission is required for voice input. Please grant permission or type below.",
+
+            // Guided Task Mode
+            guidedTaskTitle = "Guided Task",
+            guidedTaskSubtitle = "Step-by-step assistance for daily activities",
+            guidedTaskActionTitle = "Guided Task Assistance",
+            guidedTaskActionSubtitle = "Step-by-step guidance for tasks like making tea or coffee",
+            guidedTaskSpokenIntro = "Guided Task Mode. Aim camera at your workspace and tap Scan to begin, or say what task you want help with.",
+            nextStep = "Next Step",
+            repeatStep = "Repeat Step",
+            scanAgain = "Scan Again",
+            stopTask = "Stop Task",
+            taskCompleted = "Task Completed!",
+            stepLabel = "Step",
+            workspacePrompt = "Point camera at your workspace and scan to start",
+            observationTitle = "Visual Observation",
+            instructionTitle = "Current Instruction",
+            clarificationPrompt = "Clarification Needed",
+            taskStoppedSpoken = "Guided task session stopped.",
+            safetyWarningTitle = "Safety Notice",
+            safetyWarningMessage = "Caution: Hot liquids, heating appliances, or sharp utensils may be present. Proceed with care.",
 
             // Settings
             settingsTitle = "Settings",
@@ -363,6 +407,7 @@ data class AppStrings(
             processingSubtitle = "आपकी छवि का विश्लेषण हो रहा है",
             processingReadingText = "छपा हुआ टेक्स्ट पढ़ा जा रहा है। कृपया कैमरा स्थिर रखें।",
             processingDescribing = "आस-पास का विश्लेषण किया जा रहा है। कृपया कैमरा स्थिर रखें।",
+            processingGuidedTask = "कार्य निर्देशों का विश्लेषण किया जा रहा है। कृपया कैमरा स्थिर रखें।",
             preparingAnalysis = "विश्लेषण तैयार किया जा रहा है...",
             processingDetail = "कृपया कैमरा स्थिर रखें। परिणाम थोड़ी देर में पढ़कर सुनाए जाएंगे।",
             analysisIssueTitle = "विश्लेषण समस्या",
@@ -421,6 +466,26 @@ data class AppStrings(
             findingAnswerSpoken = "आपके प्रश्न का उत्तर खोजा जा रहा है...",
             speechNotAvailableWarning = "इस डिवाइस पर आवाज़ पहचान उपलब्ध नहीं है। कृपया लिखकर प्रश्न पूछें।",
             micPermissionRequiredWarning = "आवाज़ इनपुट के लिए माइक्रोफ़ोन अनुमति आवश्यक है। कृपया अनुमति दें या नीचे टाइप करें।",
+
+            // Guided Task Mode
+            guidedTaskTitle = "गाइडेड टास्क",
+            guidedTaskSubtitle = "दैनिक कार्यों के लिए कदम-दर-कदम सहायता",
+            guidedTaskActionTitle = "गाइडेड टास्क सहायता",
+            guidedTaskActionSubtitle = "चाय या कॉफी बनाने जैसे कार्यों के लिए चरणबद्ध मार्गदर्शन",
+            guidedTaskSpokenIntro = "गाइडेड टास्क मोड। कैमरे को अपने कार्यक्षेत्र पर रखें और शुरू करने के लिए स्कैन करें, या बोलें कि आप किस कार्य में मदद चाहते हैं।",
+            nextStep = "अगला कदम",
+            repeatStep = "कदम दोहराएं",
+            scanAgain = "फिर से स्कैन करें",
+            stopTask = "टास्क रोकें",
+            taskCompleted = "टास्क पूरा हुआ!",
+            stepLabel = "कदम",
+            workspacePrompt = "कैमरे को कार्यक्षेत्र पर रखें और शुरू करने के लिए स्कैन करें",
+            observationTitle = "दृश्य अवलोकन",
+            instructionTitle = "वर्तमान निर्देश",
+            clarificationPrompt = "स्पष्टीकरण आवश्यक है",
+            taskStoppedSpoken = "गाइडेड टास्क सत्र रोक दिया गया है।",
+            safetyWarningTitle = "सुरक्षा सूचना",
+            safetyWarningMessage = "सावधानी: गर्म तरल, गर्म उपकरण या नुकीली वस्तुएं उपस्थित हो सकती हैं। सावधानी से आगे बढ़ें।",
 
             // Settings
             settingsTitle = "सेटिंग्स",

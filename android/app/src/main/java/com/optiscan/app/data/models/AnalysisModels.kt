@@ -21,7 +21,19 @@ data class AnalysisResponse(
     val shouldRecapture: Boolean = false,
 
     @SerializedName("reason")
-    val reason: String? = null
+    val reason: String? = null,
+
+    @SerializedName("step_index")
+    val stepIndex: Int? = null,
+
+    @SerializedName("is_task_complete")
+    val isTaskComplete: Boolean = false,
+
+    @SerializedName("needs_clarification")
+    val needsClarification: Boolean = false,
+
+    @SerializedName("needs_rescan")
+    val needsRescan: Boolean = false
 )
 
 /**
@@ -41,6 +53,7 @@ data class HealthResponse(
 object TaskTypes {
     const val DESCRIBE_IMAGE = "describe_image"
     const val READ_TEXT = "read_text"
+    const val GUIDED_TASK = "guided_task"
 }
 
 /**

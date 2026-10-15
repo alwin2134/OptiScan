@@ -65,6 +65,19 @@ class VisionProvider(ABC):
         """Process printed text (supporting client-side Android ML Kit text)."""
         pass
 
+    @abstractmethod
+    async def guide_task(
+        self,
+        image_bytes: bytes,
+        goal: str,
+        step_history: Optional[str] = None,
+        user_response: Optional[str] = None,
+        mime_type: str = "image/jpeg",
+        language: str = "en",
+    ) -> AnalysisResponse:
+        """Guide the user step-by-step through a requested task with visual grounding and safety checks."""
+        pass
+
 
 class MockVisionProvider(VisionProvider):
     """Mock vision provider for development, unit testing, and offline hackathon demos.
@@ -187,6 +200,131 @@ class MockVisionProvider(VisionProvider):
             should_recapture=False,
             reason=reason,
         )
+
+    async def guide_task(
+        self,
+        image_bytes: bytes,
+        goal: str,
+        step_history: Optional[str] = None,
+        user_response: Optional[str] = None,
+        mime_type: str = "image/jpeg",
+        language: str = "en",
+    ) -> AnalysisResponse:
+        logger.info(
+            "MockVisionProvider guide_task called (bytes: %d, goal: %s, history: %s, user_resp: %s, lang: %s)",
+            len(image_bytes),
+            goal,
+            step_history,
+            user_response,
+            language,
+        )
+        is_hindi = (language or "en").lower().startswith("hi")
+        clean_user = (user_response or "").strip().lower()
+        history_str = (step_history or "").strip().lower()
+
+        # Handle 'stop' intent
+        if "stop" in clean_user or "रोक" in clean_user:
+            return AnalysisResponse(
+                status=StatusType.SUCCESS.value,
+                task=TaskType.GUIDED_TASK.value,
+                answer="टास्क सत्र रोक दिया गया है।" if is_hindi else "Task session stopped.",
+                should_recapture=False,
+                is_task_complete=True,
+                reason="Guided task session stopped by user.",
+            )
+
+        # Procedural step progression (e.g., tea making or general tasks)
+        if not history_str and not clean_user:
+            answer = (
+                "[Simulated Guidance - Mock Mode] मुझे आपकी मेज पर एक कप और एक केतली दिखाई दे रही है। सुरक्षित रूप से शुरू करने के लिए: क्या केतली में पानी भरा है?"
+                if is_hindi else
+                "[Simulated Guidance - Mock Mode] I can see a cup and a kettle on your table. To begin safely: can you confirm if the kettle contains water?"
+            )
+            return AnalysisResponse(
+                status=StatusType.SUCCESS.value,
+                task=TaskType.GUIDED_TASK.value,
+                answer=answer,
+                step_index=0,
+                needs_clarification=True,
+                is_task_complete=False,
+                reason="Initial workspace observation requiring tactile water level clarification.",
+            )
+        elif "step 1" not in history_str and "कदम 1" not in history_str:
+            answer = (
+                "[Simulated Guidance - Mock Mode] कदम 1: केतली का प्लग लगाएं और स्विच चालू करें। उबलने के बाद केतली के अपने आप बंद (क्लिक) होने की प्रतीक्षा करें। तापमान जांचने के लिए केतली को न छुएं।"
+                if is_hindi else
+                "[Simulated Guidance - Mock Mode] Step 1: Ensure the kettle is plugged in and switched on. Wait for it to click off automatically once boiled. Do not touch the body of the kettle to check heat."
+            )
+            return AnalysisResponse(
+                status=StatusType.SUCCESS.value,
+                task=TaskType.GUIDED_TASK.value,
+                answer=answer,
+                step_index=1,
+                needs_clarification=False,
+                is_task_complete=False,
+                reason="First procedural step provided.",
+            )
+        elif "step 2" not in history_str and "कदम 2" not in history_str:
+            answer = (
+                "[Simulated Guidance - Mock Mode] कदम 2: कप में एक टी बैग रखें।"
+                if is_hindi else
+                "[Simulated Guidance - Mock Mode] Step 2: Place a tea bag into your cup on the table."
+            )
+            return AnalysisResponse(
+                status=StatusType.SUCCESS.value,
+                task=TaskType.GUIDED_TASK.value,
+                answer=answer,
+                step_index=2,
+                needs_clarification=False,
+                is_task_complete=False,
+                reason="Second procedural step provided.",
+            )
+        elif "step 3" not in history_str and "कदम 3" not in history_str:
+            answer = (
+                "[Simulated Guidance - Mock Mode] कदम 3: सावधानी से केतली से गर्म पानी कप में तीन-चौथाई भरें। केवल हैंडल पकड़ें, गर्म तरल से सावधान रहें।"
+                if is_hindi else
+                "[Simulated Guidance - Mock Mode] Step 3: Carefully pour hot water from the kettle into the cup up to three quarters full. Grip only the insulated handle; exercise caution with hot liquids."
+            )
+            return AnalysisResponse(
+                status=StatusType.SUCCESS.value,
+                task=TaskType.GUIDED_TASK.value,
+                answer=answer,
+                step_index=3,
+                needs_clarification=False,
+                is_task_complete=False,
+                reason="Third procedural step provided with safety caution.",
+            )
+        elif "step 4" not in history_str and "कदम 4" not in history_str:
+            answer = (
+                "[Simulated Guidance - Mock Mode] कदम 4: टी बैग को 2 मिनट के लिए भीगने दें, फिर धागा पकड़कर सावधानी से निकाल लें।"
+                if is_hindi else
+                "[Simulated Guidance - Mock Mode] Step 4: Allow the tea bag to steep for 2 minutes, then remove it carefully by the string."
+            )
+            return AnalysisResponse(
+                status=StatusType.SUCCESS.value,
+                task=TaskType.GUIDED_TASK.value,
+                answer=answer,
+                step_index=4,
+                needs_clarification=False,
+                is_task_complete=False,
+                reason="Fourth procedural step provided.",
+            )
+        else:
+            answer = (
+                "[Simulated Guidance - Mock Mode] आपकी चाय तैयार है! सावधानी से आनंद लें।"
+                if is_hindi else
+                "[Simulated Guidance - Mock Mode] Your tea is ready! Enjoy your drink with care."
+            )
+            return AnalysisResponse(
+                status=StatusType.SUCCESS.value,
+                task=TaskType.GUIDED_TASK.value,
+                answer=answer,
+                step_index=5,
+                needs_clarification=False,
+                is_task_complete=True,
+                reason="Guided task complete.",
+            )
+
 
 
 class GeminiVisionProvider(VisionProvider):
@@ -449,6 +587,82 @@ class GeminiVisionProvider(VisionProvider):
             should_recapture=response.should_recapture,
             reason=response.reason,
         )
+
+    async def guide_task(
+        self,
+        image_bytes: bytes,
+        goal: str,
+        step_history: Optional[str] = None,
+        user_response: Optional[str] = None,
+        mime_type: str = "image/jpeg",
+        language: str = "en",
+    ) -> AnalysisResponse:
+        """Provide single-step, safety-conserving visual guidance grounded in workspace imagery."""
+        if not image_bytes:
+            raise VisionProviderError("Image data cannot be empty for visual task guidance.")
+
+        is_hindi = (language or "en").lower().startswith("hi")
+        b64_image = base64.b64encode(image_bytes).decode("utf-8")
+
+        prompt_instructions = (
+            f"GOAL: {goal.strip()}\n"
+            f"PRIOR CONTEXT / COMPLETED STEPS:\n{step_history.strip() if step_history else 'None (Initial scan)'}\n"
+            f"USER INPUT / CLARIFICATION:\n{user_response.strip() if user_response else 'None'}\n\n"
+            "TASK INSTRUCTIONS FOR ASSISTING BLIND/LOW-VISION USER (AROMA & Be My Eyes Safety Standard):\n"
+            "1. Inspect the workspace image carefully against the goal and prior context.\n"
+            "2. State what relevant items are visible and their relative positions.\n"
+            "3. If an essential item, container volume, temperature, or switch state cannot be visually confirmed with certainty, "
+            "DO NOT GUESS. Ask the user a short clarification question or ask them to tilt/rescan.\n"
+            "4. Give EXACTLY ONE next actionable, concise instruction. Do NOT list multiple steps at once.\n"
+            "5. Apply conservative safety around hot liquids, burners, steam, sharp utensils, and electrical sockets. "
+            "Never claim an appliance is cool or off without visual confirmation.\n"
+            "6. DO NOT instruct the user to touch appliances, heating elements, or hot surfaces to check temperature. "
+            "DO NOT use auditory cues alone (such as bubbling or boiling sounds) as proof of safety without visual confirmation of switch shutoff or steam.\n"
+            "7. Never assume a physical action was completed merely because it appeared in prior context. Verify the current visual evidence. "
+            "If the physical state cannot be confirmed from the image, request a rescan or clarification.\n"
+            "8. If the overall goal is fully achieved, clearly state that the task is complete.\n"
+        )
+        if is_hindi:
+            prompt_instructions += (
+                "\nCRITICAL: Respond entirely in natural Hindi (Devanagari script). "
+                "Keep numbers, units, and brand names exact."
+            )
+
+        parts = [
+            {"text": prompt_instructions},
+            {
+                "inline_data": {
+                    "mime_type": mime_type,
+                    "data": b64_image,
+                }
+            },
+        ]
+
+        answer = await self._post_gemini_parts(parts)
+
+        is_complete = any(
+            phrase in answer.lower()
+            for phrase in [
+                "task complete",
+                "task is complete",
+                "finished",
+                "all done",
+                "कार्य पूरा हुआ",
+                "तैयार है",
+            ]
+        )
+        needs_clarif = "?" in answer or "confirm" in answer.lower() or "check" in answer.lower() or "क्या" in answer
+
+        return AnalysisResponse(
+            status=StatusType.SUCCESS.value,
+            task=TaskType.GUIDED_TASK.value,
+            answer=answer,
+            should_recapture=False,
+            is_task_complete=is_complete,
+            needs_clarification=needs_clarif,
+            reason="Guided task instruction generated with visual context.",
+        )
+
 
 
 def get_vision_provider(settings: Optional[Settings] = None) -> VisionProvider:

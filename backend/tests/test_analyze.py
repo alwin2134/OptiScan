@@ -312,3 +312,43 @@ def test_analyze_backward_compatibility_omitted_language():
     assert payload["status"] == "success"
     assert "Directly ahead" in payload["answer"] or "hallway" in payload["answer"].lower()
 
+
+def test_analyze_guided_task_mode_initial_observation():
+    """Verify POST /analyze supports guided_task with initial clarification requirement."""
+    img_bytes = create_test_image()
+    files = {"image": ("test.jpg", img_bytes, "image/jpeg")}
+    data = {
+        "task": "guided_task",
+        "task_goal": "make tea",
+        "language": "en",
+    }
+
+    response = client.post("/analyze", files=files, data=data)
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "success"
+    assert payload["task"] == "guided_task"
+    assert payload["step_index"] == 0
+    assert payload["needs_clarification"] is True
+    assert "kettle" in payload["answer"].lower()
+    assert "water" in payload["answer"].lower()
+
+
+def test_analyze_guided_task_mode_hindi():
+    """Verify POST /analyze supports guided_task in Hindi with Devanagari script."""
+    img_bytes = create_test_image()
+    files = {"image": ("test.jpg", img_bytes, "image/jpeg")}
+    data = {
+        "task": "guided_task",
+        "task_goal": "चाय बनाएं",
+        "language": "hi",
+    }
+
+    response = client.post("/analyze", files=files, data=data)
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "success"
+    assert payload["task"] == "guided_task"
+    assert any("\u0900" <= c <= "\u097F" for c in payload["answer"])
+    assert "केतली" in payload["answer"]
+

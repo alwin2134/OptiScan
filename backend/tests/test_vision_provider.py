@@ -402,4 +402,86 @@ async def test_gemini_provider_ocr_with_question_text_only():
         assert "PARACETAMOL 650MG" in parts[0]["text"]
 
 
+@pytest.mark.asyncio
+async def test_mock_provider_guide_task_progression():
+    """Verify MockVisionProvider steps sequentially through guided tea preparation."""
+    provider = MockVisionProvider()
+
+    # Initial scan: observation + water confirmation request
+    step0 = await provider.guide_task(image_bytes=b"dummy", goal="make tea", language="en")
+    assert step0.status == "success"
+    assert step0.task == "guided_task"
+    assert step0.step_index == 0
+    assert step0.needs_clarification is True
+    assert "cup and a kettle" in step0.answer
+
+    # Step 1
+    step1 = await provider.guide_task(
+        image_bytes=b"dummy",
+        goal="make tea",
+        step_history="",
+        user_response="Yes, the kettle has water.",
+        language="en",
+    )
+    assert step1.step_index == 1
+    assert "Step 1" in step1.answer
+    assert "plugged in" in step1.answer
+
+    # Step 3 with safety warning
+    step3 = await provider.guide_task(
+        image_bytes=b"dummy",
+        goal="make tea",
+        step_history="step 1 completed, step 2 completed",
+        user_response="tea bag is in cup",
+        language="en",
+    )
+    assert step3.step_index == 3
+    assert "Step 3" in step3.answer
+    assert "hot water" in step3.answer or "hot liquids" in step3.answer
+
+    # Stop command
+    stop_resp = await provider.guide_task(
+        image_bytes=b"dummy",
+        goal="make tea",
+        user_response="stop",
+        language="en",
+    )
+    assert stop_resp.is_task_complete is True
+    assert "stopped" in stop_resp.answer.lower()
+
+
+@pytest.mark.asyncio
+async def test_gemini_provider_guide_task():
+    """Verify GeminiVisionProvider constructs AROMA/Be My Eyes safety prompt and parses response."""
+    provider = GeminiVisionProvider(api_key="valid-key")
+    mock_post = AsyncMock()
+    mock_post.return_value = MagicMock(
+        status_code=200,
+        json=MagicMock(return_value={
+            "candidates": [{
+                "content": {"parts": [{"text": "I see a cup and a kettle on the counter. Is the kettle filled with water?"}]},
+                "finishReason": "STOP",
+            }]
+        }),
+    )
+
+    with patch("httpx.AsyncClient.post", mock_post):
+        response = await provider.guide_task(
+            image_bytes=b"jpeg-bytes",
+            goal="Help me make tea",
+            language="en",
+        )
+        assert response.status == "success"
+        assert response.task == "guided_task"
+        assert response.needs_clarification is True
+        assert "cup and a kettle" in response.answer
+
+        call_args = mock_post.call_args
+        payload = call_args.kwargs["json"]
+        parts = payload["contents"][0]["parts"]
+        assert len(parts) == 2  # Prompt instructions + inline image data
+        assert "AROMA & Be My Eyes Safety Standard" in parts[0]["text"]
+        assert "EXACTLY ONE next actionable, concise instruction" in parts[0]["text"]
+
+
 

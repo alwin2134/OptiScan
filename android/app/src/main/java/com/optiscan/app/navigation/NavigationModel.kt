@@ -13,6 +13,10 @@ enum class ScanTask(val displayTitle: String, val subtitle: String) {
     DESCRIBE_SURROUNDINGS(
         displayTitle = "Describe Surroundings",
         subtitle = "Describe objects, rooms, and walking paths."
+    ),
+    GUIDED_TASK(
+        displayTitle = "Guided Task",
+        subtitle = "Step-by-step assistance for activities like making tea."
     )
 }
 
@@ -40,6 +44,10 @@ sealed interface Screen {
     data class AskQuestion(
         val contextTitle: String? = null,
         val contextContent: String? = null
+    ) : Screen
+    data class GuidedTask(
+        val goal: String = "make tea",
+        val currentInstruction: String? = null
     ) : Screen
     data object Settings : Screen
 }

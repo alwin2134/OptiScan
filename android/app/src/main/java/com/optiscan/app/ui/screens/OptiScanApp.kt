@@ -94,6 +94,10 @@ fun OptiScanApp(
                             performHaptic()
                             viewModel.navigateTo(Screen.Camera(task))
                         },
+                        onStartGuidedTask = {
+                            performHaptic()
+                            viewModel.startGuidedTask()
+                        },
                         onNavigateToAskQuestion = {
                             performHaptic()
                             viewModel.navigateTo(Screen.AskQuestion())
@@ -244,6 +248,48 @@ fun OptiScanApp(
                     onAnnounceScreen = {
                         viewModel.speak(strings.askQuestionSpokenIntro)
                     },
+                    modifier = modifier.fillMaxSize()
+                )
+            }
+
+            is Screen.GuidedTask -> {
+                val guidedSession by viewModel.guidedTaskSession.collectAsState()
+                GuidedTaskScreen(
+                    goal = guidedSession?.goal ?: screen.goal,
+                    stepIndex = guidedSession?.currentStepIndex ?: 1,
+                    instruction = guidedSession?.currentInstruction ?: screen.currentInstruction ?: "",
+                    needsClarification = guidedSession?.needsClarification ?: false,
+                    isTaskComplete = guidedSession?.isTaskComplete ?: false,
+                    isSpeaking = isSpeaking,
+                    language = settings.language,
+                    onNextStep = {
+                        performHaptic()
+                        viewModel.advanceGuidedTask()
+                    },
+                    onRepeatStep = {
+                        performHaptic()
+                        viewModel.repeatGuidedTaskInstruction()
+                    },
+                    onScanAgain = {
+                        performHaptic()
+                        viewModel.rescanGuidedTask()
+                    },
+                    onAskQuestion = {
+                        performHaptic()
+                        val currentText = guidedSession?.currentInstruction ?: screen.currentInstruction ?: ""
+                        viewModel.navigateTo(
+                            Screen.AskQuestion(
+                                contextTitle = strings.guidedTaskTitle,
+                                contextContent = currentText
+                            )
+                        )
+                    },
+                    onStopTask = {
+                        performHaptic()
+                        viewModel.stopGuidedTask()
+                    },
+                    onReadAloud = { text -> viewModel.speak(text) },
+                    onStopSpeech = { viewModel.stopSpeech() },
                     modifier = modifier.fillMaxSize()
                 )
             }

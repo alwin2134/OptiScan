@@ -25,6 +25,33 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.json.JSONArray
+
+/**
+ * State machine phases for interactive guided physical assistance (AROMA / Be My Eyes model).
+ */
+enum class GuidedTaskState {
+    IDLE,
+    OBSERVING,
+    AWAITING_CLARIFICATION,
+    INSTRUCTING,
+    AWAITING_USER_ACTION,
+    COMPLETED,
+    STOPPED
+}
+
+/**
+ * Session data keeping track of the user's current goal, procedural steps, and clarification state.
+ */
+data class GuidedTaskSession(
+    val goal: String = "make tea",
+    val state: GuidedTaskState = GuidedTaskState.IDLE,
+    val currentStepIndex: Int = 0,
+    val currentInstruction: String = "",
+    val needsClarification: Boolean = false,
+    val isTaskComplete: Boolean = false,
+    val stepHistory: List<String> = emptyList()
+)
 
 /**
  * Single source of truth for OptiScan navigation, camera state, visual analysis, accessibility, and volume key control.
@@ -75,6 +102,10 @@ class MainViewModel(
 
     private val _analysisError = MutableStateFlow<String?>(null)
     val analysisError: StateFlow<String?> = _analysisError.asStateFlow()
+
+    // Guided Task State
+    private val _guidedTaskSession = MutableStateFlow<GuidedTaskSession?>(null)
+    val guidedTaskSession: StateFlow<GuidedTaskSession?> = _guidedTaskSession.asStateFlow()
 
     init {
         val loadedSettings = preferencesManager?.loadSettings() ?: AppSettings()
@@ -130,7 +161,7 @@ class MainViewModel(
 
     // Navigation methods
     fun navigateTo(screen: Screen, clearBackstack: Boolean = false) {
-        if (screen !is Screen.ReadTextResult && screen !is Screen.DescriptionResult) {
+        if (screen !is Screen.ReadTextResult && screen !is Screen.DescriptionResult && screen !is Screen.GuidedTask) {
             stopSpeech()
         }
         if (clearBackstack) {
@@ -244,6 +275,17 @@ class MainViewModel(
                     stopSpeech()
                 } else {
                     speak(screen.description)
+                }
+                return true
+            }
+
+            is Screen.GuidedTask -> {
+                // Toggle speech playback of current guided instruction
+                val instruction = _guidedTaskSession.value?.currentInstruction ?: screen.currentInstruction ?: ""
+                if (_isSpeaking.value) {
+                    stopSpeech()
+                } else if (instruction.isNotBlank()) {
+                    speak(instruction)
                 }
                 return true
             }
@@ -450,6 +492,75 @@ class MainViewModel(
                             speak("${strings.errorPrefix} $errorMsg. ${strings.retry}")
                         }
                     }
+
+                    ScanTask.GUIDED_TASK -> {
+                        val currentSession = _guidedTaskSession.value ?: GuidedTaskSession(goal = "make tea")
+                        speak(strings.processingGuidedTask)
+
+                        val historyJson = if (currentSession.stepHistory.isNotEmpty()) {
+                            JSONArray(currentSession.stepHistory).toString()
+                        } else null
+
+                        val result = repository.analyzeImage(
+                            imageBytes = bytesToAnalyze ?: ByteArray(0),
+                            task = TaskTypes.GUIDED_TASK,
+                            language = lang.code,
+                            taskGoal = currentSession.goal,
+                            stepHistory = historyJson
+                        )
+
+                        result.onSuccess { response ->
+                            _isAnalyzing.value = false
+                            if (_guidedTaskSession.value?.state == GuidedTaskState.STOPPED || _currentScreen.value is Screen.Home) {
+                                Log.i(tag, "Ignoring guided task response received after session stopped.")
+                                return@onSuccess
+                            }
+                            if (response.shouldRecapture) {
+                                val reason = response.reason ?: strings.recaptureBlurryReason
+                                speak("${strings.recaptureAnnouncement} $reason")
+                                navigateTo(Screen.GuidedTask(goal = currentSession.goal, currentInstruction = reason))
+                            } else {
+                                val instruction = response.answer ?: if (lang == AppLanguage.HINDI) {
+                                    "निर्देश उपलब्ध नहीं हो सका।"
+                                } else {
+                                    "No instruction could be determined."
+                                }
+                                val isComplete = response.isTaskComplete == true
+                                val needsClarify = response.needsClarification == true
+                                val stepIdx = response.stepIndex ?: (currentSession.currentStepIndex + 1)
+                                val updatedHistory = currentSession.stepHistory.toMutableList().apply {
+                                    add("Step $stepIdx: $instruction")
+                                }
+
+                                val newState = when {
+                                    isComplete -> GuidedTaskState.COMPLETED
+                                    needsClarify -> GuidedTaskState.AWAITING_CLARIFICATION
+                                    else -> GuidedTaskState.INSTRUCTING
+                                }
+
+                                _guidedTaskSession.value = currentSession.copy(
+                                    state = newState,
+                                    currentStepIndex = stepIdx,
+                                    currentInstruction = instruction,
+                                    needsClarification = needsClarify,
+                                    isTaskComplete = isComplete,
+                                    stepHistory = updatedHistory
+                                )
+
+                                navigateTo(Screen.GuidedTask(goal = currentSession.goal, currentInstruction = instruction))
+                                speak(instruction)
+                            }
+                        }.onFailure { ex ->
+                            _isAnalyzing.value = false
+                            val errorMsg = ex.message ?: if (lang == AppLanguage.HINDI) {
+                                "कार्य निर्देश प्राप्त करने में विफलता।"
+                            } else {
+                                "Failed to obtain task instructions."
+                            }
+                            _analysisError.value = errorMsg
+                            speak("${strings.errorPrefix} $errorMsg. ${strings.retry}")
+                        }
+                    }
                 }
             } catch (e: CancellationException) {
                 _isAnalyzing.value = false
@@ -532,6 +643,61 @@ class MainViewModel(
                 speak(errorMsg)
             }
         }
+    }
+
+    // Guided Task Actions
+    fun startGuidedTask(goal: String = "make tea", autoNavigateToCamera: Boolean = true) {
+        _guidedTaskSession.value = GuidedTaskSession(
+            goal = goal,
+            state = GuidedTaskState.OBSERVING,
+            currentStepIndex = 0,
+            currentInstruction = "",
+            stepHistory = emptyList()
+        )
+        val strings = AppStrings.get(_settings.value.language)
+        speak(strings.guidedTaskSpokenIntro)
+        if (autoNavigateToCamera) {
+            navigateTo(Screen.Camera(ScanTask.GUIDED_TASK))
+        }
+    }
+
+    fun advanceGuidedTask() {
+        val session = _guidedTaskSession.value ?: return
+        if (session.isTaskComplete) {
+            navigateTo(Screen.Home, clearBackstack = true)
+            return
+        }
+        if (repository.isMockMode()) {
+            analyzeCapturedImage(ScanTask.GUIDED_TASK, _capturedBytes.value)
+        } else {
+            // For real-world live assistance, require fresh visual observation of the updated workspace
+            rescanGuidedTask()
+        }
+    }
+
+    fun repeatGuidedTaskInstruction() {
+        val instruction = _guidedTaskSession.value?.currentInstruction
+        if (!instruction.isNullOrBlank()) {
+            speak(instruction)
+        }
+    }
+
+    fun rescanGuidedTask() {
+        val strings = AppStrings.get(_settings.value.language)
+        speak(strings.cameraInstructionSpoken)
+        navigateTo(Screen.Camera(ScanTask.GUIDED_TASK))
+    }
+
+    fun stopGuidedTask() {
+        analysisJob?.cancel()
+        _isAnalyzing.value = false
+        stopSpeech()
+        _guidedTaskSession.value = _guidedTaskSession.value?.copy(
+            state = GuidedTaskState.STOPPED
+        )
+        val strings = AppStrings.get(_settings.value.language)
+        speak(strings.taskStoppedSpoken)
+        navigateTo(Screen.Home, clearBackstack = true)
     }
 
     // Spoken feedback methods

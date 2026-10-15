@@ -28,7 +28,9 @@ interface ScanRepository {
         task: String,
         question: String? = null,
         ocrText: String? = null,
-        language: String = "en"
+        language: String = "en",
+        taskGoal: String? = null,
+        stepHistory: String? = null
     ): Result<AnalysisResponse>
 
     suspend fun readTextOnDevice(bitmap: Bitmap): Result<String>
@@ -96,33 +98,140 @@ class ScanRepositoryImpl(
         task: String,
         question: String?,
         ocrText: String?,
-        language: String
+        language: String,
+        taskGoal: String?,
+        stepHistory: String?
     ): Result<AnalysisResponse> = withContext(Dispatchers.IO) {
         if (useMockBackend) {
             Log.i(tag, "Returning mock backend response for task: $task, language: $language")
             val isHindi = language.equals("hi", ignoreCase = true)
-            val mockAnswer = if (task == TaskTypes.DESCRIBE_IMAGE) {
-                if (isHindi) {
-                    "[ऑफलाइन मॉक] दोनों तरफ दरवाजों वाला एक सीधा और साफ इनडोर गलियारा। आगे का रास्ता पूरी तरह खुला और सुरक्षित है।"
-                } else {
-                    "[Offline Mock] A clear indoor hallway with doors on both sides. Straight ahead is unobstructed."
+            val cleanUser = (question ?: "").trim().lowercase()
+            val historyStr = (stepHistory ?: "").trim().lowercase()
+
+            val mockResponse = when (task) {
+                TaskTypes.DESCRIBE_IMAGE -> {
+                    val mockAnswer = if (isHindi) {
+                        "[ऑफलाइन मॉक] दोनों तरफ दरवाजों वाला एक सीधा और साफ इनडोर गलियारा। आगे का रास्ता पूरी तरह खुला और सुरक्षित है।"
+                    } else {
+                        "[Offline Mock] A clear indoor hallway with doors on both sides. Straight ahead is unobstructed."
+                    }
+                    AnalysisResponse(
+                        status = StatusTypes.SUCCESS,
+                        task = task,
+                        answer = mockAnswer,
+                        shouldRecapture = false,
+                        reason = if (isHindi) "ऑफलाइन मॉक बैकएंड मोड सक्षम है।" else "Offline mock backend mode is enabled."
+                    )
                 }
-            } else {
-                if (isHindi) {
-                    "[ऑफलाइन मॉक] ROOM 302 - ACCESSIBLE ENTRANCE"
-                } else {
-                    "[Offline Mock] ROOM 302 - ACCESSIBLE ENTRANCE"
+                TaskTypes.READ_TEXT -> {
+                    val mockAnswer = if (isHindi) {
+                        "[ऑफलाइन मॉक] ROOM 302 - ACCESSIBLE ENTRANCE"
+                    } else {
+                        "[Offline Mock] ROOM 302 - ACCESSIBLE ENTRANCE"
+                    }
+                    AnalysisResponse(
+                        status = StatusTypes.SUCCESS,
+                        task = task,
+                        answer = mockAnswer,
+                        shouldRecapture = false,
+                        reason = if (isHindi) "ऑफलाइन मॉक बैकएंड मोड सक्षम है।" else "Offline mock backend mode is enabled."
+                    )
+                }
+                TaskTypes.GUIDED_TASK -> {
+                    if (cleanUser.contains("stop") || cleanUser.contains("रोक")) {
+                        AnalysisResponse(
+                            status = StatusTypes.SUCCESS,
+                            task = task,
+                            answer = if (isHindi) "टास्क सत्र रोक दिया गया है।" else "Task session stopped.",
+                            isTaskComplete = true,
+                            reason = "Guided task stopped by user."
+                        )
+                    } else if (historyStr.isBlank() && cleanUser.isBlank()) {
+                        AnalysisResponse(
+                            status = StatusTypes.SUCCESS,
+                            task = task,
+                            answer = if (isHindi) {
+                                "[अनुकरण मार्गदर्शन - मॉक मोड] मुझे मेज पर एक कप और एक केतली दिखाई दे रही है। सुरक्षित रूप से शुरू करने के लिए: क्या केतली में पानी भरा है?"
+                            } else {
+                                "[Simulated Guidance - Mock Mode] I can see a cup and a kettle on the table. To begin safely: can you confirm if the kettle contains water?"
+                            },
+                            stepIndex = 0,
+                            needsClarification = true,
+                            reason = "Initial workspace observation requiring clarification."
+                        )
+                    } else if (!historyStr.contains("step 1") && !historyStr.contains("कदम 1")) {
+                        AnalysisResponse(
+                            status = StatusTypes.SUCCESS,
+                            task = task,
+                            answer = if (isHindi) {
+                                "[अनुकरण मार्गदर्शन - मॉक मोड] कदम 1: केतली का प्लग लगाएं और स्विच चालू करें। उबलने के बाद केतली के अपने आप बंद (क्लिक) होने की प्रतीक्षा करें। तापमान जांचने के लिए केतली को न छुएं।"
+                            } else {
+                                "[Simulated Guidance - Mock Mode] Step 1: Ensure the kettle is plugged in and switched on. Wait for it to click off automatically once boiled. Do not touch the body of the kettle to check heat."
+                            },
+                            stepIndex = 1,
+                            reason = "First procedural step."
+                        )
+                    } else if (!historyStr.contains("step 2") && !historyStr.contains("कदम 2")) {
+                        AnalysisResponse(
+                            status = StatusTypes.SUCCESS,
+                            task = task,
+                            answer = if (isHindi) {
+                                "[अनुकरण मार्गदर्शन - मॉक मोड] कदम 2: कप में एक टी बैग रखें।"
+                            } else {
+                                "[Simulated Guidance - Mock Mode] Step 2: Place a tea bag into your cup on the table."
+                            },
+                            stepIndex = 2,
+                            reason = "Second procedural step."
+                        )
+                    } else if (!historyStr.contains("step 3") && !historyStr.contains("कदम 3")) {
+                        AnalysisResponse(
+                            status = StatusTypes.SUCCESS,
+                            task = task,
+                            answer = if (isHindi) {
+                                "[अनुकरण मार्गदर्शन - मॉक मोड] कदम 3: सावधानी से केतली से गर्म पानी कप में तीन-चौथाई भरें। केवल हैंडल पकड़ें, गर्म तरल से सावधान रहें।"
+                            } else {
+                                "[Simulated Guidance - Mock Mode] Step 3: Carefully pour hot water from the kettle into the cup up to three quarters full. Grip only the insulated handle; exercise caution with hot liquids."
+                            },
+                            stepIndex = 3,
+                            reason = "Third procedural step with safety caution."
+                        )
+                    } else if (!historyStr.contains("step 4") && !historyStr.contains("कदम 4")) {
+                        AnalysisResponse(
+                            status = StatusTypes.SUCCESS,
+                            task = task,
+                            answer = if (isHindi) {
+                                "[अनुकरण मार्गदर्शन - मॉक मोड] कदम 4: टी बैग को 2 मिनट के लिए भीगने दें, फिर धागा पकड़कर सावधानी से निकाल लें।"
+                            } else {
+                                "[Simulated Guidance - Mock Mode] Step 4: Allow the tea bag to steep for 2 minutes, then remove it carefully by the string."
+                            },
+                            stepIndex = 4,
+                            reason = "Fourth procedural step."
+                        )
+                    } else {
+                        AnalysisResponse(
+                            status = StatusTypes.SUCCESS,
+                            task = task,
+                            answer = if (isHindi) {
+                                "[अनुकरण मार्गदर्शन - मॉक मोड] आपकी चाय तैयार है! सावधानी से आनंद लें।"
+                            } else {
+                                "[Simulated Guidance - Mock Mode] Your tea is ready! Enjoy your drink with care."
+                            },
+                            stepIndex = 5,
+                            isTaskComplete = true,
+                            reason = "Guided task complete."
+                        )
+                    }
+                }
+                else -> {
+                    AnalysisResponse(
+                        status = StatusTypes.SUCCESS,
+                        task = task,
+                        answer = "[Offline Mock] Task processed.",
+                        shouldRecapture = false
+                    )
                 }
             }
-            return@withContext Result.success(
-                AnalysisResponse(
-                    status = StatusTypes.SUCCESS,
-                    task = task,
-                    answer = mockAnswer,
-                    shouldRecapture = false,
-                    reason = if (isHindi) "ऑफलाइन मॉक बैकएंड मोड सक्षम है।" else "Offline mock backend mode is enabled."
-                )
-            )
+            return@withContext Result.success(mockResponse)
         }
 
         // Release/production check: verify that a valid server URL is configured
@@ -142,8 +251,10 @@ class ScanRepositoryImpl(
             val questionPart = question?.toRequestBody("text/plain".toMediaTypeOrNull())
             val ocrPart = ocrText?.toRequestBody("text/plain".toMediaTypeOrNull())
             val langPart = language.toRequestBody("text/plain".toMediaTypeOrNull())
+            val goalPart = taskGoal?.toRequestBody("text/plain".toMediaTypeOrNull())
+            val historyPart = stepHistory?.toRequestBody("text/plain".toMediaTypeOrNull())
 
-            val response = api.analyzeImage(imagePart, taskPart, questionPart, ocrPart, langPart)
+            val response = api.analyzeImage(imagePart, taskPart, questionPart, ocrPart, langPart, goalPart, historyPart)
             Result.success(response)
         } catch (e: HttpException) {
             Log.e(tag, "HTTP error from backend: ${e.code()}", e)
