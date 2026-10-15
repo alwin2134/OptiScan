@@ -62,6 +62,10 @@ async def analyze_image(
         default=None,
         description="Optional client-side text extracted on Android via Google ML Kit.",
     ),
+    language: Optional[str] = Form(
+        default="en",
+        description="Optional requested response language code: 'en' (default) or 'hi'.",
+    ),
     settings: Settings = Depends(get_settings),
     validation_service: ImageValidationService = Depends(get_validation_service),
     vision_provider: VisionProvider = Depends(get_provider),
@@ -80,6 +84,25 @@ async def analyze_image(
                 answer=None,
                 should_recapture=False,
                 reason=f"Unsupported task '{task}'. Allowed tasks are 'describe_image' and 'read_text'.",
+            ).model_dump(),
+        )
+
+    # 2. Validate response language
+    raw_lang = (language or "en").strip().lower()
+    if raw_lang in ("en", "english"):
+        target_language = "en"
+    elif raw_lang in ("hi", "hindi"):
+        target_language = "hi"
+    else:
+        logger.warning("Unsupported language requested: '%s'", language)
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content=AnalysisResponse(
+                status=StatusType.ERROR.value,
+                task=task,
+                answer=None,
+                should_recapture=False,
+                reason=f"Unsupported language '{language}'. Supported languages are 'en' (English) and 'hi' (Hindi).",
             ).model_dump(),
         )
 
@@ -153,6 +176,7 @@ async def analyze_image(
                 image_bytes,
                 question=question,
                 mime_type=mime_type,
+                language=target_language,
             )
         else:
             response = await vision_provider.process_ocr(
@@ -160,6 +184,7 @@ async def analyze_image(
                 ocr_text=ocr_text,
                 question=question,
                 mime_type=mime_type,
+                language=target_language,
             )
         return response
     except VisionProviderError as e:
@@ -199,8 +224,10 @@ async def process_ocr_text(
     vision_provider: VisionProvider = Depends(get_provider),
 ) -> AnalysisResponse:
     """Process on-device OCR text without requiring an image upload."""
+    target_lang = "hi" if (payload.language or "en").strip().lower() in ("hi", "hindi") else "en"
     return await vision_provider.process_ocr(
         image_bytes=b"",
         ocr_text=payload.ocr_text,
         question=payload.question,
+        language=target_lang,
     )

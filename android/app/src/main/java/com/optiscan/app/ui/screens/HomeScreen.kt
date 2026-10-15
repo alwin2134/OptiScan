@@ -28,11 +28,13 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.optiscan.app.navigation.AppLanguage
 import com.optiscan.app.navigation.ScanTask
 import com.optiscan.app.ui.components.AccessibleActionCard
 import com.optiscan.app.ui.components.ButtonVariant
 import com.optiscan.app.ui.components.OptiScanButton
 import com.optiscan.app.ui.components.ScreenTitle
+import com.optiscan.app.ui.localization.AppStrings
 import com.optiscan.app.ui.theme.ActionPrimaryBlue
 import com.optiscan.app.ui.theme.ActionSecondaryGreen
 import com.optiscan.app.ui.theme.BackgroundNearBlack
@@ -45,12 +47,15 @@ import com.optiscan.app.ui.theme.TextWhite
  */
 @Composable
 fun HomeScreen(
+    language: AppLanguage = AppLanguage.ENGLISH,
     onNavigateToCamera: (ScanTask) -> Unit,
     onNavigateToAskQuestion: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onAnnounceHome: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings = AppStrings.get(language)
+
     LaunchedEffect(Unit) {
         onAnnounceHome()
     }
@@ -69,15 +74,15 @@ fun HomeScreen(
         ) {
             // Header Bar with Title and Settings Icon
             ScreenTitle(
-                title = "OptiScan",
-                subtitle = "Select an action below",
+                title = strings.appName,
+                subtitle = strings.homeSubtitle,
                 trailingContent = {
                     IconButton(
                         onClick = onNavigateToSettings,
                         modifier = Modifier
                             .size(52.dp)
                             .semantics {
-                                this.contentDescription = "Open Settings and Accessibility options"
+                                this.contentDescription = strings.openSettingsContentDescription
                             }
                     ) {
                         Icon(
@@ -94,8 +99,8 @@ fun HomeScreen(
 
             // Action 1: Read Text
             AccessibleActionCard(
-                title = "Read Text",
-                subtitle = "Read labels, documents, medicine packaging, and signs.",
+                title = strings.readTextTitle,
+                subtitle = strings.readTextSubtitle,
                 icon = Icons.Default.Description,
                 accentColor = ActionPrimaryBlue,
                 onClick = { onNavigateToCamera(ScanTask.READ_TEXT) }
@@ -103,8 +108,8 @@ fun HomeScreen(
 
             // Action 2: Describe Surroundings
             AccessibleActionCard(
-                title = "Describe Surroundings",
-                subtitle = "Describe objects, rooms, and walking paths.",
+                title = strings.describeSurroundingsTitle,
+                subtitle = strings.describeSurroundingsSubtitle,
                 icon = Icons.Default.Visibility,
                 accentColor = ActionSecondaryGreen,
                 onClick = { onNavigateToCamera(ScanTask.DESCRIBE_SURROUNDINGS) }
@@ -112,8 +117,8 @@ fun HomeScreen(
 
             // Action 3: Ask a Question
             AccessibleActionCard(
-                title = "Ask a Question",
-                subtitle = "Ask spoken or typed questions about what you see.",
+                title = strings.askQuestionTitle,
+                subtitle = strings.askQuestionSubtitle,
                 icon = Icons.AutoMirrored.Filled.HelpOutline,
                 accentColor = ActionPrimaryBlue,
                 onClick = onNavigateToAskQuestion
@@ -123,11 +128,11 @@ fun HomeScreen(
 
             // Secondary explicit Settings button at the bottom for easy reach
             OptiScanButton(
-                text = "Settings & Preferences",
+                text = strings.settingsButton,
                 onClick = onNavigateToSettings,
                 variant = ButtonVariant.SURFACE,
                 icon = Icons.Default.Settings,
-                contentDesc = "Settings and accessibility preferences button"
+                contentDesc = strings.openSettingsContentDescription
             )
         }
     }

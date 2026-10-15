@@ -6,6 +6,7 @@ import com.optiscan.app.data.models.AnalysisResponse
 import com.optiscan.app.data.models.StatusTypes
 import com.optiscan.app.data.models.TaskTypes
 import com.optiscan.app.data.repository.ScanRepository
+import com.optiscan.app.navigation.AppLanguage
 import com.optiscan.app.navigation.AppSettings
 import com.optiscan.app.navigation.ScanTask
 import com.optiscan.app.navigation.Screen
@@ -36,18 +37,21 @@ class FakeScanRepository : ScanRepository {
     var capturedTask: String? = null
     var capturedOcrText: String? = null
     var capturedQuestion: String? = null
+    var capturedLanguage: String? = null
     var callCount: Int = 0
 
     override suspend fun analyzeImage(
         imageBytes: ByteArray,
         task: String,
         question: String?,
-        ocrText: String?
+        ocrText: String?,
+        language: String
     ): Result<AnalysisResponse> {
         callCount++
         capturedTask = task
         capturedQuestion = question
         capturedOcrText = ocrText
+        capturedLanguage = language
 
         return analyzeResult ?: Result.success(
             AnalysisResponse(
@@ -288,5 +292,72 @@ class MainViewModelIntegrationTest {
         assertNotNull(answeredQuery)
         assertEquals("The dosage is two tablets every 6 hours.", answeredQuery)
         assertEquals("What is the recommended dosage?", fakeRepository.capturedQuestion)
+    }
+
+    @Test
+    fun testHindiLanguageSettingPropagatedToAnalysisRequest() = runTest(testDispatcher) {
+        viewModel.updateSettings(AppSettings(language = AppLanguage.HINDI))
+        fakeRepository.analyzeResult = Result.success(
+            AnalysisResponse(
+                status = StatusTypes.SUCCESS,
+                task = TaskTypes.DESCRIBE_IMAGE,
+                answer = "सामने एक खुला गलियारा है।",
+                shouldRecapture = false
+            )
+        )
+
+        viewModel.analyzeCapturedImage(ScanTask.DESCRIBE_SURROUNDINGS, sampleBytes)
+        advanceUntilIdle()
+
+        assertEquals("hi", fakeRepository.capturedLanguage)
+        val current = viewModel.currentScreen.value as Screen.DescriptionResult
+        assertEquals("सामने एक खुला गलियारा है।", current.description)
+    }
+
+    @Test
+    fun testHindiReadTextRequestPreservesLanguage() = runTest(testDispatcher) {
+        viewModel.updateSettings(AppSettings(language = AppLanguage.HINDI))
+        fakeRepository.analyzeResult = Result.success(
+            AnalysisResponse(
+                status = StatusTypes.SUCCESS,
+                task = TaskTypes.READ_TEXT,
+                answer = "Paracetamol 500mg - Take 2 tablets every 6 hours",
+                shouldRecapture = false
+            )
+        )
+
+        viewModel.analyzeCapturedImage(ScanTask.READ_TEXT, sampleBytes)
+        advanceUntilIdle()
+
+        assertEquals("hi", fakeRepository.capturedLanguage)
+        val current = viewModel.currentScreen.value as Screen.ReadTextResult
+        assertEquals("Paracetamol 500mg - Take 2 tablets every 6 hours", current.text)
+    }
+
+    @Test
+    fun testHindiFollowUpQuestionPropagatesLanguage() = runTest(testDispatcher) {
+        viewModel.updateSettings(AppSettings(language = AppLanguage.HINDI))
+        viewModel.setCapturedImage(null, sampleBytes)
+
+        fakeRepository.analyzeResult = Result.success(
+            AnalysisResponse(
+                status = StatusTypes.SUCCESS,
+                task = TaskTypes.DESCRIBE_IMAGE,
+                answer = "पानी के साथ हर 6 घंटे में 2 caplets लें।",
+                shouldRecapture = false
+            )
+        )
+
+        var resultAnswer: String? = null
+        viewModel.askQuestion(
+            query = "खुराक क्या है?",
+            contextContent = "Acetaminophen 500mg"
+        ) { answer ->
+            resultAnswer = answer
+        }
+
+        advanceUntilIdle()
+        assertEquals("hi", fakeRepository.capturedLanguage)
+        assertEquals("पानी के साथ हर 6 घंटे में 2 caplets लें।", resultAnswer)
     }
 }

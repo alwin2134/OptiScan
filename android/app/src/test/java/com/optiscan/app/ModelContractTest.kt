@@ -69,4 +69,24 @@ class ModelContractTest {
         assertTrue(response.shouldRecapture)
         assertEquals("Image is too blurry. Please hold steady and recapture.", response.reason)
     }
+
+    @Test
+    fun testAnalyzeHindiResponseWithMedicationSafetyContract() {
+        val json = """
+            {
+              "status": "success",
+              "task": "read_text",
+              "answer": "दवा का नाम Paracetamol 500mg है। खुराक: 2 tablets हर 6 घंटे में।",
+              "should_recapture": false,
+              "reason": null
+            }
+        """.trimIndent()
+
+        val response = gson.fromJson(json, AnalysisResponse::class.java)
+        assertEquals("success", response.status)
+        assertEquals("read_text", response.task)
+        assertEquals("दवा का नाम Paracetamol 500mg है। खुराक: 2 tablets हर 6 घंटे में।", response.answer)
+        assertFalse(response.shouldRecapture)
+        assertNull(response.reason)
+    }
 }

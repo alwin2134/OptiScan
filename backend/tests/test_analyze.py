@@ -251,3 +251,64 @@ def test_ocr_text_endpoint():
     data = response.json()
     assert data["status"] == "success"
     assert "WET FLOOR" in data["answer"]
+
+
+def test_analyze_describe_image_with_hindi_language():
+    """Verify Hindi language parameter triggers Hindi response."""
+    img_bytes = create_test_image()
+    files = {"image": ("test.jpg", img_bytes, "image/jpeg")}
+    data = {"task": "describe_image", "language": "hi"}
+
+    response = client.post("/analyze", files=files, data=data)
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "success"
+    # Should contain Devanagari Hindi text
+    assert any("\u0900" <= c <= "\u097F" for c in payload["answer"])
+
+
+def test_analyze_read_text_hindi_preserves_medicine_and_numbers():
+    """Verify Hindi read_text faithfully preserves verbatim OCR text, medicine names, and units."""
+    img_bytes = create_test_image()
+    files = {"image": ("test.jpg", img_bytes, "image/jpeg")}
+    data = {
+        "task": "read_text",
+        "ocr_text": "Paracetamol 650mg - 1 tablet twice daily",
+        "question": "दवा का नाम और मात्रा क्या है?",
+        "language": "hi",
+    }
+
+    response = client.post("/analyze", files=files, data=data)
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "success"
+    # Medicine brand and dosage numbers must be strictly preserved
+    assert "Paracetamol 650mg" in payload["answer"]
+    assert "1 tablet" in payload["answer"]
+
+
+def test_analyze_unsupported_language_returns_400():
+    """Verify unsupported language codes are rejected with 400 Bad Request and clean reason."""
+    img_bytes = create_test_image()
+    files = {"image": ("test.jpg", img_bytes, "image/jpeg")}
+    data = {"task": "describe_image", "language": "fr"}
+
+    response = client.post("/analyze", files=files, data=data)
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["status"] == "error"
+    assert "Unsupported language 'fr'" in payload["reason"]
+
+
+def test_analyze_backward_compatibility_omitted_language():
+    """Verify existing clients omitting language parameter default to English seamlessly."""
+    img_bytes = create_test_image()
+    files = {"image": ("test.jpg", img_bytes, "image/jpeg")}
+    data = {"task": "describe_image"}
+
+    response = client.post("/analyze", files=files, data=data)
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "success"
+    assert "Directly ahead" in payload["answer"] or "hallway" in payload["answer"].lower()
+

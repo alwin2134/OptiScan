@@ -18,6 +18,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.optiscan.app.data.mock.MockData
+import com.optiscan.app.navigation.AppLanguage
 import com.optiscan.app.ui.components.ButtonVariant
 import com.optiscan.app.ui.components.OptiScanButton
 import com.optiscan.app.ui.components.ResultCard
@@ -25,6 +26,7 @@ import com.optiscan.app.ui.components.ScreenTitle
 import com.optiscan.app.ui.components.SpeechControls
 import com.optiscan.app.ui.components.StatusLevel
 import com.optiscan.app.ui.components.StatusMessage
+import com.optiscan.app.ui.localization.AppStrings
 import com.optiscan.app.ui.theme.BackgroundNearBlack
 
 /**
@@ -35,6 +37,7 @@ import com.optiscan.app.ui.theme.BackgroundNearBlack
 @Composable
 fun DescriptionResultScreen(
     description: String = MockData.SAMPLE_SCENE_DESCRIPTION,
+    language: AppLanguage = AppLanguage.ENGLISH,
     shouldRecapture: Boolean = false,
     recaptureReason: String? = null,
     isLiveResult: Boolean = true,
@@ -47,11 +50,13 @@ fun DescriptionResultScreen(
     onAnnounceResult: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings = AppStrings.get(language)
+
     LaunchedEffect(Unit) {
         if (shouldRecapture) {
-            onAnnounceResult("Recapture recommended. ${recaptureReason ?: "Image is too blurry or dark. Tap Retake Photo to try again."}")
+            onAnnounceResult("${strings.recaptureAnnouncement} ${recaptureReason ?: strings.recaptureBlurryReason}")
         } else {
-            onAnnounceResult("Scene description ready. Tap Read Aloud to listen.")
+            onAnnounceResult(strings.sceneDescriptionAnnouncement)
         }
     }
 
@@ -69,41 +74,41 @@ fun DescriptionResultScreen(
         ) {
             // Screen Header
             ScreenTitle(
-                title = if (shouldRecapture) "Recapture Photo" else "Scene Description",
-                subtitle = if (shouldRecapture) "Image quality check notification" else "Surroundings and walking path analysis",
+                title = if (shouldRecapture) strings.recaptureTitle else strings.sceneDescriptionTitle,
+                subtitle = if (shouldRecapture) strings.recaptureSubtitle else strings.sceneDescriptionSubtitle,
                 onBackClick = onBackToHome,
-                backContentDescription = "Return to Home screen"
+                backContentDescription = strings.returnToPreviousScreen
             )
 
             if (shouldRecapture) {
                 // High-visibility Recapture Warning
                 StatusMessage(
-                    title = "Recapture Recommended",
-                    message = recaptureReason ?: "The captured image is too blurry or low quality for a reliable description.",
+                    title = strings.recaptureTitle,
+                    message = recaptureReason ?: strings.recaptureBlurryReason,
                     level = StatusLevel.WARNING
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 OptiScanButton(
-                    text = "Retake Photo",
+                    text = strings.retakePhoto,
                     onClick = onCaptureAnother,
                     variant = ButtonVariant.PRIMARY,
                     icon = Icons.Default.CameraAlt,
-                    contentDesc = "Retake photo with camera"
+                    contentDesc = "${strings.retakePhoto} button"
                 )
 
                 OptiScanButton(
-                    text = "Back to Home",
+                    text = strings.backToHome,
                     onClick = onBackToHome,
                     variant = ButtonVariant.OUTLINE,
                     icon = Icons.Default.Home,
-                    contentDesc = "Return to Home screen button"
+                    contentDesc = strings.backToHome
                 )
             } else {
                 // Result Card
                 ResultCard(
-                    title = "Your Surroundings",
+                    title = strings.surroundingsCardTitle,
                     content = description,
                     noticeText = if (isLiveResult) "AI Scene Analysis by Google Gemini" else "Simulated demonstration output"
                 )
@@ -113,36 +118,36 @@ fun DescriptionResultScreen(
                     isSpeaking = isSpeaking,
                     onReadAloud = { onReadAloud(description) },
                     onStopSpeech = onStopSpeech,
-                    readAloudText = "Read Aloud Description"
+                    readAloudText = strings.readAloudDescription
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
 
                 // Action: Ask a Question
                 OptiScanButton(
-                    text = "Ask a Question About This Scene",
+                    text = strings.askQuestionAboutScene,
                     onClick = { onAskQuestion(description) },
                     variant = ButtonVariant.PRIMARY,
                     icon = Icons.AutoMirrored.Filled.HelpOutline,
-                    contentDesc = "Ask a follow up question about this room description"
+                    contentDesc = "${strings.askQuestionAboutScene} button"
                 )
 
                 // Action: Capture Another Image
                 OptiScanButton(
-                    text = "Capture Another Scene",
+                    text = strings.captureAnotherScene,
                     onClick = onCaptureAnother,
                     variant = ButtonVariant.SURFACE,
                     icon = Icons.Default.CameraAlt,
-                    contentDesc = "Capture another image button"
+                    contentDesc = "${strings.captureAnotherScene} button"
                 )
 
                 // Navigation: Back to Home
                 OptiScanButton(
-                    text = "Back to Home",
+                    text = strings.backToHome,
                     onClick = onBackToHome,
                     variant = ButtonVariant.OUTLINE,
                     icon = Icons.Default.Home,
-                    contentDesc = "Return to Home screen button"
+                    contentDesc = strings.backToHome
                 )
             }
 

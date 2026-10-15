@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ऑप्टीस्कैन</string>
+    <string name="action_read_text">टेक्स्ट पढ़ें</string>
+    <string name="action_describe_image">आस-पास का विवरण</string>
+    <string name="action_recapture">दोबारा फोटो लें</string>
+    <string name="action_repeat_tts">दोबारा सुनें</string>
+    <string name="status_ready">ऑप्टीस्कैन तैयार है। कैमरा सामने करें और कोई क्रिया चुनें।</string>
+    <string name="status_processing">छवि का विश्लेषण हो रहा है, कृपया स्थिर रखें...</string>
+    <string name="status_ocr_processing">डिवाइस पर टेक्स्ट पढ़ा जा रहा है...</string>
+    <string name="camera_permission_required">फोटो लेने और टेक्स्ट पढ़ने के लिए कैमरा अनुमति आवश्यक है।</string>
+    <string name="grant_permission">कैमरा अनुमति दें</string>
+</resources>

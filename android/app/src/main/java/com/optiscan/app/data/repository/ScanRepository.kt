@@ -26,7 +26,8 @@ interface ScanRepository {
         imageBytes: ByteArray,
         task: String,
         question: String? = null,
-        ocrText: String? = null
+        ocrText: String? = null,
+        language: String = "en"
     ): Result<AnalysisResponse>
 
     suspend fun readTextOnDevice(bitmap: Bitmap): Result<String>
@@ -43,9 +44,11 @@ interface ScanRepository {
  */
 class ScanRepositoryImpl(
     private var api: OptiScanApi = ApiClient.createService(),
-    private val ocrService: OcrService = OcrService(),
+    ocrService: OcrService? = null,
     private var useMockBackend: Boolean = false
 ) : ScanRepository {
+
+    private val ocrService: OcrService by lazy { ocrService ?: OcrService() }
 
     private val tag = "ScanRepository"
     private val gson = Gson()
@@ -72,14 +75,24 @@ class ScanRepositoryImpl(
         imageBytes: ByteArray,
         task: String,
         question: String?,
-        ocrText: String?
+        ocrText: String?,
+        language: String
     ): Result<AnalysisResponse> = withContext(Dispatchers.IO) {
         if (useMockBackend) {
-            Log.i(tag, "Returning mock backend response for task: $task")
+            Log.i(tag, "Returning mock backend response for task: $task, language: $language")
+            val isHindi = language.equals("hi", ignoreCase = true)
             val mockAnswer = if (task == TaskTypes.DESCRIBE_IMAGE) {
-                "[Offline Mock] A clear indoor hallway with doors on both sides. Straight ahead is unobstructed."
+                if (isHindi) {
+                    "[ऑफलाइन मॉक] दोनों तरफ दरवाजों वाला एक सीधा और साफ इनडोर गलियारा। आगे का रास्ता पूरी तरह खुला और सुरक्षित है।"
+                } else {
+                    "[Offline Mock] A clear indoor hallway with doors on both sides. Straight ahead is unobstructed."
+                }
             } else {
-                "[Offline Mock] ROOM 302 - ACCESSIBLE ENTRANCE"
+                if (isHindi) {
+                    "[ऑफलाइन मॉक] ROOM 302 - ACCESSIBLE ENTRANCE"
+                } else {
+                    "[Offline Mock] ROOM 302 - ACCESSIBLE ENTRANCE"
+                }
             }
             return@withContext Result.success(
                 AnalysisResponse(
@@ -87,7 +100,7 @@ class ScanRepositoryImpl(
                     task = task,
                     answer = mockAnswer,
                     shouldRecapture = false,
-                    reason = "Offline mock backend mode is enabled."
+                    reason = if (isHindi) "ऑफलाइन मॉक बैकएंड मोड सक्षम है।" else "Offline mock backend mode is enabled."
                 )
             )
         }
@@ -98,8 +111,9 @@ class ScanRepositoryImpl(
             val taskPart = task.toRequestBody("text/plain".toMediaTypeOrNull())
             val questionPart = question?.toRequestBody("text/plain".toMediaTypeOrNull())
             val ocrPart = ocrText?.toRequestBody("text/plain".toMediaTypeOrNull())
+            val langPart = language.toRequestBody("text/plain".toMediaTypeOrNull())
 
-            val response = api.analyzeImage(imagePart, taskPart, questionPart, ocrPart)
+            val response = api.analyzeImage(imagePart, taskPart, questionPart, ocrPart, langPart)
             Result.success(response)
         } catch (e: HttpException) {
             Log.e(tag, "HTTP error from backend: ${e.code()}", e)

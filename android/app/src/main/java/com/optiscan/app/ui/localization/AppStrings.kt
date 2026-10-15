@@ -1,0 +1,428 @@
+package com.optiscan.app.ui.localization
+
+import com.optiscan.app.navigation.AppLanguage
+import com.optiscan.app.navigation.ScanTask
+
+/**
+ * Centralized, type-safe localized strings for English and Hindi (हिंदी).
+ * Enables instant reactive UI and voice adaptation when language preference changes.
+ */
+data class AppStrings(
+    // Common / Global
+    val appName: String,
+    val backToHome: String,
+    val returnToPreviousScreen: String,
+    val retry: String,
+    val cancel: String,
+    val errorPrefix: String,
+
+    // Welcome Screen
+    val welcomeTitle: String,
+    val welcomeTagline: String,
+    val welcomeDescription: String,
+    val getStarted: String,
+    val welcomeSpokenIntro: String,
+
+    // Home Screen
+    val homeSubtitle: String,
+    val homeSpokenAnnouncement: String,
+    val readTextTitle: String,
+    val readTextSubtitle: String,
+    val describeSurroundingsTitle: String,
+    val describeSurroundingsSubtitle: String,
+    val askQuestionTitle: String,
+    val askQuestionSubtitle: String,
+    val settingsButton: String,
+    val openSettingsContentDescription: String,
+
+    // Camera Screen
+    val cameraAimInstruction: String,
+    val capturePhoto: String,
+    val flashOn: String,
+    val flashOff: String,
+    val cameraPermissionTitle: String,
+    val cameraPermissionMessage: String,
+    val grantCameraPermission: String,
+    val cameraInstructionSpoken: String,
+
+    // Image Preview Screen
+    val previewTitle: String,
+    val previewSubtitle: String,
+    val photoCapturedCardTitle: String,
+    val photoCapturedCardSubtitle: String,
+    val useThisPhoto: String,
+    val retakePhoto: String,
+    val previewSpokenAnnouncement: String,
+
+    // Processing Screen
+    val processingTitle: String,
+    val processingSubtitle: String,
+    val processingReadingText: String,
+    val processingDescribing: String,
+    val preparingAnalysis: String,
+    val processingDetail: String,
+    val analysisIssueTitle: String,
+    val analysisIssueMessage: String,
+    val cancelAnalysis: String,
+    val returnToCamera: String,
+    val analysisCancelledSpoken: String,
+
+    // Read Text Result Screen
+    val extractedTextTitle: String,
+    val extractedTextSubtitle: String,
+    val documentTextCardTitle: String,
+    val readAloudAllText: String,
+    val stopSpeech: String,
+    val askQuestionAboutText: String,
+    val captureAnotherDocument: String,
+    val textExtractedAnnouncement: String,
+    val copiedToClipboard: String,
+    val onDeviceFallbackNotice: String,
+    val onDeviceFallbackSpoken: String,
+
+    // Description Result Screen
+    val sceneDescriptionTitle: String,
+    val sceneDescriptionSubtitle: String,
+    val surroundingsCardTitle: String,
+    val readAloudDescription: String,
+    val askQuestionAboutScene: String,
+    val captureAnotherScene: String,
+    val sceneDescriptionAnnouncement: String,
+
+    // Recapture Guidance
+    val recaptureTitle: String,
+    val recaptureSubtitle: String,
+    val recaptureBlurryReason: String,
+    val recaptureDarkReason: String,
+    val recaptureAnnouncement: String,
+
+    // Ask Question Screen
+    val askQuestionScreenSubtitle: String,
+    val activeContextTitle: String,
+    val activeContextMessage: String,
+    val tapToSpeak: String,
+    val listeningTitle: String,
+    val listeningMicrophonePrompt: String,
+    val touchToActivateVoice: String,
+    val micButtonContentDescription: String,
+    val micListeningContentDescription: String,
+    val orTypeQuestion: String,
+    val enterQuestionHint: String,
+    val sendQuestion: String,
+    val questionAskedTitle: String,
+    val spokenAnswerTitle: String,
+    val readAnswerAloud: String,
+    val askQuestionSpokenIntro: String,
+    val listeningNowSpoken: String,
+    val findingAnswerSpoken: String,
+    val speechNotAvailableWarning: String,
+    val micPermissionRequiredWarning: String,
+
+    // Settings Screen
+    val settingsTitle: String,
+    val settingsSubtitle: String,
+    val languageSectionTitle: String,
+    val languageSectionSubtitle: String,
+    val languageEnglish: String,
+    val languageHindi: String,
+    val languageChangedAnnouncement: String,
+    val hindiTtsFallbackNotice: String,
+    val voiceFeedbackTitle: String,
+    val voiceFeedbackSubtitle: String,
+    val speechRateTitle: String,
+    val speechRateSubtitle: String,
+    val testSpeechSpeed: String,
+    val testSpeechSentence: String,
+    val textSizeTitle: String,
+    val hapticFeedbackTitle: String,
+    val hapticFeedbackSubtitle: String,
+    val offlineMockTitle: String,
+    val offlineMockSubtitle: String,
+    val aboutTitle: String,
+    val aboutDescription: String
+) {
+    fun taskTitle(task: ScanTask): String = when (task) {
+        ScanTask.READ_TEXT -> readTextTitle
+        ScanTask.DESCRIBE_SURROUNDINGS -> describeSurroundingsTitle
+    }
+
+    fun taskSubtitle(task: ScanTask): String = when (task) {
+        ScanTask.READ_TEXT -> readTextSubtitle
+        ScanTask.DESCRIBE_SURROUNDINGS -> describeSurroundingsSubtitle
+    }
+
+    companion object {
+        val English = AppStrings(
+            appName = "OptiScan",
+            backToHome = "Back to Home",
+            returnToPreviousScreen = "Return to previous screen",
+            retry = "Retry Analysis",
+            cancel = "Cancel Analysis",
+            errorPrefix = "Error: ",
+
+            // Welcome
+            welcomeTitle = "OptiScan",
+            welcomeTagline = "See the world with your voice.",
+            welcomeDescription = "Accessible AI assistant for reading printed text and exploring your surroundings.",
+            getStarted = "Get Started",
+            welcomeSpokenIntro = "Welcome to OptiScan. An accessible visual assistant for reading text and exploring your surroundings. Tap Get Started to begin.",
+
+            // Home
+            homeSubtitle = "Select an action below",
+            homeSpokenAnnouncement = "OptiScan Home. Select Read Text, Describe Surroundings, or Ask a Question.",
+            readTextTitle = "Read Text",
+            readTextSubtitle = "Read labels, documents, medicine packaging, and signs.",
+            describeSurroundingsTitle = "Describe Surroundings",
+            describeSurroundingsSubtitle = "Describe objects, rooms, and walking paths.",
+            askQuestionTitle = "Ask a Question",
+            askQuestionSubtitle = "Ask spoken or typed questions about what you see.",
+            settingsButton = "Settings & Preferences",
+            openSettingsContentDescription = "Open Settings and Accessibility options",
+
+            // Camera
+            cameraAimInstruction = "Point camera at the object and tap Capture.",
+            capturePhoto = "Capture Photo",
+            flashOn = "Flash ON",
+            flashOff = "Flash OFF",
+            cameraPermissionTitle = "Camera Permission",
+            cameraPermissionMessage = "Camera access is not yet granted. You can grant permission or test with simulated capture.",
+            grantCameraPermission = "Grant Camera Permission",
+            cameraInstructionSpoken = "Point camera at the object and tap Capture Photo.",
+
+            // Image Preview
+            previewTitle = "Review Photo",
+            previewSubtitle = "Check your capture for",
+            photoCapturedCardTitle = "Photo Captured",
+            photoCapturedCardSubtitle = "Ready to proceed with analysis.",
+            useThisPhoto = "Use This Photo",
+            retakePhoto = "Retake Photo",
+            previewSpokenAnnouncement = "Photo captured. Tap Use This Photo to analyze, or Retake Photo to try again.",
+
+            // Processing
+            processingTitle = "OptiScan Processing",
+            processingSubtitle = "Analyzing your image",
+            processingReadingText = "Reading printed text. Please hold steady.",
+            processingDescribing = "Analyzing surroundings. Please hold steady.",
+            preparingAnalysis = "Preparing analysis...",
+            processingDetail = "Please hold steady. Results will be read aloud momentarily.",
+            analysisIssueTitle = "Analysis Issue",
+            analysisIssueMessage = "We could not complete the image analysis.",
+            cancelAnalysis = "Cancel Analysis",
+            returnToCamera = "Return to Camera",
+            analysisCancelledSpoken = "Image analysis cancelled.",
+
+            // Read Text Result
+            extractedTextTitle = "Extracted Text",
+            extractedTextSubtitle = "Optical Character Recognition Results",
+            documentTextCardTitle = "Document Text",
+            readAloudAllText = "Read Aloud All Text",
+            stopSpeech = "Stop Speech",
+            askQuestionAboutText = "Ask a Question About This Text",
+            captureAnotherDocument = "Capture Another Document",
+            textExtractedAnnouncement = "Text extracted from image. Tap Read Aloud to listen.",
+            copiedToClipboard = "All extracted text copied to your clipboard.",
+            onDeviceFallbackNotice = "Cloud analysis unreachable. Displaying on-device OCR.",
+            onDeviceFallbackSpoken = "Cloud connection failed. Using on-device text recognition.",
+
+            // Description Result
+            sceneDescriptionTitle = "Scene Description",
+            sceneDescriptionSubtitle = "Surroundings and walking path analysis",
+            surroundingsCardTitle = "Your Surroundings",
+            readAloudDescription = "Read Aloud Description",
+            askQuestionAboutScene = "Ask a Question About This Scene",
+            captureAnotherScene = "Capture Another Scene",
+            sceneDescriptionAnnouncement = "Scene description ready. Tap Read Aloud to listen.",
+
+            // Recapture
+            recaptureTitle = "Recapture Recommended",
+            recaptureSubtitle = "Image quality check notification",
+            recaptureBlurryReason = "The captured image is too blurry. Please hold steady and retake photo.",
+            recaptureDarkReason = "The captured image is too dark. Please add light and retake photo.",
+            recaptureAnnouncement = "Recapture recommended.",
+
+            // Ask Question
+            askQuestionScreenSubtitle = "Ask using voice or type below",
+            activeContextTitle = "Active Context",
+            activeContextMessage = "Context attached from previous analysis.",
+            tapToSpeak = "Tap to Speak Question",
+            listeningTitle = "Listening...",
+            listeningMicrophonePrompt = "Listening to microphone... Speak clearly.",
+            touchToActivateVoice = "Touch to activate voice input",
+            micButtonContentDescription = "Microphone button. Tap to ask your question aloud.",
+            micListeningContentDescription = "Currently listening for speech. Tap to cancel.",
+            orTypeQuestion = "Or Type Your Question",
+            enterQuestionHint = "Enter question here",
+            sendQuestion = "Send Question",
+            questionAskedTitle = "Question Asked",
+            spokenAnswerTitle = "Spoken Answer",
+            readAnswerAloud = "Read Answer Aloud",
+            askQuestionSpokenIntro = "Ask a Question. Tap the microphone to speak, or type your question below.",
+            listeningNowSpoken = "Listening for your question. Speak now.",
+            findingAnswerSpoken = "Finding answer to your question...",
+            speechNotAvailableWarning = "Speech recognition is not available on this device. Please type your question.",
+            micPermissionRequiredWarning = "Microphone permission is required for voice input. Please grant permission or type below.",
+
+            // Settings
+            settingsTitle = "Settings",
+            settingsSubtitle = "Voice & Accessibility Preferences",
+            languageSectionTitle = "App Language",
+            languageSectionSubtitle = "Choose between English and Hindi for interface and spoken AI responses.",
+            languageEnglish = "English",
+            languageHindi = "हिंदी (Hindi)",
+            languageChangedAnnouncement = "Language changed to English.",
+            hindiTtsFallbackNotice = "Hindi voice is not installed on this device. Audio feedback will fall back to English.",
+            voiceFeedbackTitle = "Voice Spoken Feedback",
+            voiceFeedbackSubtitle = "Automatically announce screen titles, results, and action guidance.",
+            speechRateTitle = "Speech Rate",
+            speechRateSubtitle = "Adjust the playback speed of the spoken screen voice.",
+            testSpeechSpeed = "Test Speech Speed",
+            testSpeechSentence = "This is a sample sentence spoken at current speed multiplier.",
+            textSizeTitle = "Text Size Scale",
+            hapticFeedbackTitle = "Haptic Vibration Feedback",
+            hapticFeedbackSubtitle = "Vibrate device gently upon successful capture and copy actions.",
+            offlineMockTitle = "Offline Mock Mode",
+            offlineMockSubtitle = "Use local simulated responses instead of connecting to the live AI backend.",
+            aboutTitle = "About OptiScan",
+            aboutDescription = "Version 1.0.0 (Hackathon MVP)\nDesigned for blind and low-vision accessibility. Supports TalkBack screen reading, large touch targets, and high-contrast color standards."
+        )
+
+        val Hindi = AppStrings(
+            appName = "ऑप्टीस्कैन",
+            backToHome = "होम पर वापस जाएं",
+            returnToPreviousScreen = "पिछली स्क्रीन पर वापस जाएं",
+            retry = "पुनः प्रयास करें",
+            cancel = "विश्लेषण रद्द करें",
+            errorPrefix = "त्रुटि: ",
+
+            // Welcome
+            welcomeTitle = "ऑप्टीस्कैन",
+            welcomeTagline = "अपनी आवाज़ से दुनिया को देखें।",
+            welcomeDescription = "छपा हुआ टेक्स्ट पढ़ने और अपने आस-पास को समझने के लिए दृष्टिबाधितों का सुगम AI सहायक।",
+            getStarted = "शुरू करें",
+            welcomeSpokenIntro = "ऑप्टीस्कैन में आपका स्वागत है। टेक्स्ट पढ़ने और अपने आस-पास को समझने के लिए एक सुलभ विजुअल सहायक। शुरू करने के लिए 'शुरू करें' पर टैप करें।",
+
+            // Home
+            homeSubtitle = "नीचे दिया गया कोई विकल्प चुनें",
+            homeSpokenAnnouncement = "ऑप्टीस्कैन होम। टेक्स्ट पढ़ें, आस-पास का विवरण, या प्रश्न पूछें चुनें।",
+            readTextTitle = "टेक्स्ट पढ़ें",
+            readTextSubtitle = "लेबल, दस्तावेज़, दवा के पैकेट और बोर्ड पढ़ें।",
+            describeSurroundingsTitle = "आस-पास का विवरण",
+            describeSurroundingsSubtitle = "वस्तुओं, कमरों और पैदल रास्तों का विवरण।",
+            askQuestionTitle = "प्रश्न पूछें",
+            askQuestionSubtitle = "जो आप देख रहे हैं उसके बारे में बोलकर या लिखकर पूछें।",
+            settingsButton = "सेटिंग्स और प्राथमिकताएं",
+            openSettingsContentDescription = "सेटिंग्स और सुगमता विकल्प खोलें",
+
+            // Camera
+            cameraAimInstruction = "कैमरा वस्तु की ओर करें और 'फोटो लें' पर टैप करें।",
+            capturePhoto = "फोटो लें",
+            flashOn = "फ़्लैश चालू",
+            flashOff = "फ़्लैश बंद",
+            cameraPermissionTitle = "कैमरा अनुमति",
+            cameraPermissionMessage = "कैमरा अनुमति अभी नहीं दी गई है। आप अनुमति दे सकते हैं या परीक्षण कर सकते हैं।",
+            grantCameraPermission = "कैमरा अनुमति दें",
+            cameraInstructionSpoken = "कैमरा वस्तु की ओर करें और 'फोटो लें' पर टैप करें।",
+
+            // Image Preview
+            previewTitle = "फोटो समीक्षा",
+            previewSubtitle = "अपनी ली गई फोटो जांचें",
+            photoCapturedCardTitle = "फोटो ले ली गई",
+            photoCapturedCardSubtitle = "विश्लेषण के लिए तैयार है।",
+            useThisPhoto = "इस फोटो का उपयोग करें",
+            retakePhoto = "दोबारा फोटो लें",
+            previewSpokenAnnouncement = "फोटो ले ली गई है। विश्लेषण के लिए 'इस फोटो का उपयोग करें' पर टैप करें, या दोबारा प्रयास करने के लिए 'दोबारा फोटो लें' पर टैप करें।",
+
+            // Processing
+            processingTitle = "ऑप्टीस्कैन प्रोसेसिंग",
+            processingSubtitle = "आपकी छवि का विश्लेषण हो रहा है",
+            processingReadingText = "छपा हुआ टेक्स्ट पढ़ा जा रहा है। कृपया कैमरा स्थिर रखें।",
+            processingDescribing = "आस-पास का विश्लेषण किया जा रहा है। कृपया कैमरा स्थिर रखें।",
+            preparingAnalysis = "विश्लेषण तैयार किया जा रहा है...",
+            processingDetail = "कृपया कैमरा स्थिर रखें। परिणाम थोड़ी देर में पढ़कर सुनाए जाएंगे।",
+            analysisIssueTitle = "विश्लेषण समस्या",
+            analysisIssueMessage = "हम छवि विश्लेषण पूरा नहीं कर सके।",
+            cancelAnalysis = "विश्लेषण रद्द करें",
+            returnToCamera = "कैमरा पर वापस जाएं",
+            analysisCancelledSpoken = "छवि विश्लेषण रद्द कर दिया गया।",
+
+            // Read Text Result
+            extractedTextTitle = "निकाला गया टेक्स्ट",
+            extractedTextSubtitle = "ऑप्टिकल कैरेक्टर रिकॉग्निशन परिणाम",
+            documentTextCardTitle = "दस्तावेज़ टेक्स्ट",
+            readAloudAllText = "पूरा टेक्स्ट जोर से सुनें",
+            stopSpeech = "आवाज़ रोकें",
+            askQuestionAboutText = "इस टेक्स्ट के बारे में प्रश्न पूछें",
+            captureAnotherDocument = "दूसरा दस्तावेज़ स्कैन करें",
+            textExtractedAnnouncement = "छवि से टेक्स्ट निकाल लिया गया है। सुनने के लिए 'जोर से सुनें' पर टैप करें।",
+            copiedToClipboard = "सभी निकाला गया टेक्स्ट क्लिपबोर्ड पर कॉपी कर लिया गया है।",
+            onDeviceFallbackNotice = "क्लाउड विश्लेषण उपलब्ध नहीं है। डिवाइस पर पहचाना गया टेक्स्ट दिखाया जा रहा है।",
+            onDeviceFallbackSpoken = "क्लाउड कनेक्शन विफल रहा। डिवाइस पर पहचाना गया टेक्स्ट उपयोग किया जा रहा है।",
+
+            // Description Result
+            sceneDescriptionTitle = "दृश्य विवरण",
+            sceneDescriptionSubtitle = "आस-पास के वातावरण और रास्ते का विश्लेषण",
+            surroundingsCardTitle = "आपके आस-पास",
+            readAloudDescription = "विवरण जोर से सुनें",
+            askQuestionAboutScene = "इस दृश्य के बारे में प्रश्न पूछें",
+            captureAnotherScene = "दूसरा दृश्य कैप्चर करें",
+            sceneDescriptionAnnouncement = "दृश्य विवरण तैयार है। सुनने के लिए 'जोर से सुनें' पर टैप करें।",
+
+            // Recapture
+            recaptureTitle = "दोबारा फोटो लेने की सलाह",
+            recaptureSubtitle = "छवि गुणवत्ता सूचना",
+            recaptureBlurryReason = "ली गई फोटो बहुत धुंधली है। कृपया हाथ स्थिर रखकर दोबारा फोटो लें।",
+            recaptureDarkReason = "ली गई फोटो बहुत अंधेरी है। कृपया पर्याप्त रोशनी में दोबारा फोटो लें।",
+            recaptureAnnouncement = "दोबारा फोटो लेने की सलाह दी जाती है।",
+
+            // Ask Question
+            askQuestionScreenSubtitle = "बोलकर या नीचे लिखकर प्रश्न पूछें",
+            activeContextTitle = "सक्रिय संदर्भ",
+            activeContextMessage = "पिछले विश्लेषण का संदर्भ जुड़ा हुआ है।",
+            tapToSpeak = "बोलने के लिए टैप करें",
+            listeningTitle = "सुन रहा है...",
+            listeningMicrophonePrompt = "माइक सुन रहा है... स्पष्ट रूप से बोलें।",
+            touchToActivateVoice = "आवाज़ इनपुट शुरू करने के लिए छुएं",
+            micButtonContentDescription = "माइक्रोफ़ोन बटन। अपना प्रश्न बोलकर पूछने के लिए टैप करें।",
+            micListeningContentDescription = "आवाज़ सुनी जा रही है। रद्द करने के लिए टैप करें।",
+            orTypeQuestion = "या अपना प्रश्न टाइप करें",
+            enterQuestionHint = "यहाँ प्रश्न दर्ज करें",
+            sendQuestion = "प्रश्न भेजें",
+            questionAskedTitle = "पूछा गया प्रश्न",
+            spokenAnswerTitle = "उत्तर",
+            readAnswerAloud = "उत्तर जोर से सुनें",
+            askQuestionSpokenIntro = "प्रश्न पूछें। बोलने के लिए माइक पर टैप करें, या नीचे अपना प्रश्न टाइप करें।",
+            listeningNowSpoken = "आपके प्रश्न के लिए सुन रहा हूँ। अब बोलें।",
+            findingAnswerSpoken = "आपके प्रश्न का उत्तर खोजा जा रहा है...",
+            speechNotAvailableWarning = "इस डिवाइस पर आवाज़ पहचान उपलब्ध नहीं है। कृपया लिखकर प्रश्न पूछें।",
+            micPermissionRequiredWarning = "आवाज़ इनपुट के लिए माइक्रोफ़ोन अनुमति आवश्यक है। कृपया अनुमति दें या नीचे टाइप करें।",
+
+            // Settings
+            settingsTitle = "सेटिंग्स",
+            settingsSubtitle = "ध्वनि और सुगमता प्राथमिकताएं",
+            languageSectionTitle = "ऐप की भाषा (Language)",
+            languageSectionSubtitle = "स्क्रीन और AI उत्तरों के लिए अंग्रेज़ी या हिंदी चुनें।",
+            languageEnglish = "English",
+            languageHindi = "हिंदी (Hindi)",
+            languageChangedAnnouncement = "भाषा हिंदी में बदल दी गई है।",
+            hindiTtsFallbackNotice = "इस डिवाइस पर हिंदी आवाज़ स्थापित नहीं है। ऑडियो फीडबैक अंग्रेज़ी में दिया जाएगा।",
+            voiceFeedbackTitle = "बोलकर फीडबैक (आवाज़)",
+            voiceFeedbackSubtitle = "स्क्रीन शीर्षक, परिणाम और निर्देशों को स्वचालित रूप से बोलकर बताएं।",
+            speechRateTitle = "बोलने की गति",
+            speechRateSubtitle = "बोली जाने वाली स्क्रीन आवाज़ की गति समायोजित करें।",
+            testSpeechSpeed = "बोलने की गति का परीक्षण",
+            testSpeechSentence = "यह वर्तमान गति पर बोला गया एक उदाहरण वाक्य है।",
+            textSizeTitle = "टेक्स्ट का आकार",
+            hapticFeedbackTitle = "कंपन (हैप्टिक) फीडबैक",
+            hapticFeedbackSubtitle = "सफल फोटो या कॉपी पर हल्का कंपन करें।",
+            offlineMockTitle = "ऑफलाइन मॉक मोड",
+            offlineMockSubtitle = "लाइव AI बैकएंड के बजाय स्थानीय सिम्युलेटेड उत्तरों का उपयोग करें।",
+            aboutTitle = "ऑप्टीस्कैन के बारे में",
+            aboutDescription = "संस्करण 1.0.0 (हैकथॉन MVP)\nदृष्टिबाधित और कम दृष्टि वाले उपयोगकर्ताओं के लिए डिज़ाइन किया गया।"
+        )
+
+        fun get(language: AppLanguage): AppStrings = when (language) {
+            AppLanguage.ENGLISH -> English
+            AppLanguage.HINDI -> Hindi
+        }
+    }
+}

@@ -33,6 +33,7 @@ interface OptiScanApi {
         @Part image: MultipartBody.Part,
         @Part("task") task: RequestBody,
         @Part("question") question: RequestBody? = null,
-        @Part("ocr_text") ocrText: RequestBody? = null
+        @Part("ocr_text") ocrText: RequestBody? = null,
+        @Part("language") language: RequestBody? = null
     ): AnalysisResponse
 }

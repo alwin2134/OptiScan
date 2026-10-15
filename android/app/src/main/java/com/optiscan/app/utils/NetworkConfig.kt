@@ -22,14 +22,14 @@ object NetworkConfig {
      * Heuristic to detect whether the app is executing inside an Android emulator.
      */
     val isEmulator: Boolean
-        get() = (Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic"))
-                || Build.FINGERPRINT.startsWith("generic")
-                || Build.HARDWARE.contains("goldfish")
-                || Build.HARDWARE.contains("ranchu")
-                || Build.MODEL.contains("google_sdk")
-                || Build.MODEL.contains("Emulator")
-                || Build.MODEL.contains("Android SDK built for x86")
-                || Build.MANUFACTURER.contains("Genymotion")
+        get() = (Build.BRAND?.startsWith("generic") == true && Build.DEVICE?.startsWith("generic") == true)
+                || Build.FINGERPRINT?.startsWith("generic") == true
+                || Build.HARDWARE?.contains("goldfish") == true
+                || Build.HARDWARE?.contains("ranchu") == true
+                || Build.MODEL?.contains("google_sdk") == true
+                || Build.MODEL?.contains("Emulator") == true
+                || Build.MODEL?.contains("Android SDK built for x86") == true
+                || Build.MANUFACTURER?.contains("Genymotion") == true
 
     /**
      * Active backend base URL.

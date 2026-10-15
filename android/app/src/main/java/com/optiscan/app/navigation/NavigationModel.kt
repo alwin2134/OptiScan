@@ -45,6 +45,20 @@ sealed interface Screen {
 }
 
 /**
+ * Supported application languages.
+ */
+enum class AppLanguage(val code: String, val displayName: String, val nativeName: String) {
+    ENGLISH("en", "English", "English"),
+    HINDI("hi", "Hindi", "हिंदी");
+
+    companion object {
+        fun fromCode(code: String?): AppLanguage {
+            return entries.firstOrNull { it.code.equals(code, ignoreCase = true) } ?: ENGLISH
+        }
+    }
+}
+
+/**
  * Global application accessibility preferences.
  */
 data class AppSettings(
@@ -53,7 +67,8 @@ data class AppSettings(
     val hapticFeedbackEnabled: Boolean = true,
     val textSizeScale: Float = 1.0f,
     val useMockBackend: Boolean = false,
-    val tripleTapNavigationEnabled: Boolean = true
+    val tripleTapNavigationEnabled: Boolean = true,
+    val language: AppLanguage = AppLanguage.ENGLISH
 ) {
     val textSizeLabel: String
         get() = when {
@@ -62,3 +77,4 @@ data class AppSettings(
             else -> "Default"
         }
 }
+

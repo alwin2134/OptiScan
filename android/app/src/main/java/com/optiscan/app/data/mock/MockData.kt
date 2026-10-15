@@ -41,29 +41,58 @@ object MockData {
     /**
      * Simulated Q&A responses for Screen H (Ask a Question).
      */
-    fun answerQuestion(question: String, contextText: String? = null): String {
+    fun answerQuestion(question: String, contextText: String? = null, language: String = "en"): String {
+        val isHindi = language.equals("hi", ignoreCase = true)
         val q = question.lowercase().trim()
         return when {
-            q.contains("expire") || q.contains("expiration") || q.contains("date") -> {
-                "The expiration date printed on the lower corner is November 2028 (Lot 9342B-01)."
+            q.contains("expire") || q.contains("expiration") || q.contains("date") || q.contains("समाप्त") || q.contains("तारीख") -> {
+                if (isHindi) {
+                    "निचले कोने पर छपी समाप्ति तिथि November 2028 (Lot 9342B-01) है।"
+                } else {
+                    "The expiration date printed on the lower corner is November 2028 (Lot 9342B-01)."
+                }
             }
-            q.contains("dose") || q.contains("dosage") || q.contains("how many") || q.contains("take") -> {
-                "Take 2 caplets every 6 hours with a glass of water. Do not exceed 6 caplets within 24 hours."
+            q.contains("dose") || q.contains("dosage") || q.contains("how many") || q.contains("take") || q.contains("खुराक") || q.contains("कितनी") -> {
+                if (isHindi) {
+                    "पानी के साथ हर 6 घंटे में 2 caplets लें। 24 घंटे में 6 caplets से अधिक न लें।"
+                } else {
+                    "Take 2 caplets every 6 hours with a glass of water. Do not exceed 6 caplets within 24 hours."
+                }
             }
-            q.contains("ingredient") || q.contains("what is in") || q.contains("acetaminophen") -> {
-                "The active ingredient is Acetaminophen USP, 500 milligrams per caplet."
+            q.contains("ingredient") || q.contains("what is in") || q.contains("acetaminophen") || q.contains("दवा") || q.contains("घटक") -> {
+                if (isHindi) {
+                    "सक्रिय घटक Acetaminophen USP, 500 mg प्रति caplet है।"
+                } else {
+                    "The active ingredient is Acetaminophen USP, 500 milligrams per caplet."
+                }
             }
-            q.contains("path") || q.contains("obstacle") || q.contains("walk") || q.contains("clear") || q.contains("door") -> {
-                "Yes, the path straight ahead is clear. There is an open doorway approximately 10 feet in front of you."
+            q.contains("path") || q.contains("obstacle") || q.contains("walk") || q.contains("clear") || q.contains("door") || q.contains("रास्ता") || q.contains("दरवाजा") -> {
+                if (isHindi) {
+                    "हाँ, सीधा रास्ता साफ है। आपके ठीक सामने लगभग 10 फीट की दूरी पर एक खुला दरवाजा है।"
+                } else {
+                    "Yes, the path straight ahead is clear. There is an open doorway approximately 10 feet in front of you."
+                }
             }
-            q.contains("right") || q.contains("bench") || q.contains("bag") -> {
-                "To your right, there is a low wooden bench with a backpack resting on it."
+            q.contains("right") || q.contains("bench") || q.contains("bag") || q.contains("दाईं") || q.contains("बेंच") -> {
+                if (isHindi) {
+                    "आपकी दाईं ओर एक नीची लकड़ी की बेंच है जिस पर एक backpack रखा है।"
+                } else {
+                    "To your right, there is a low wooden bench with a backpack resting on it."
+                }
             }
             else -> {
                 if (!contextText.isNullOrBlank()) {
-                    "Regarding your question '$question': Based on the text, this is an over-the-counter pain reliever with standard usage instructions and warnings."
+                    if (isHindi) {
+                        "आपके प्रश्न '$question' के उत्तर में: दिए गए टेक्स्ट के अनुसार, यह एक सामान्य दर्द निवारक दवा है जिसमें मानक निर्देश और चेतावनियाँ शामिल हैं।"
+                    } else {
+                        "Regarding your question '$question': Based on the text, this is an over-the-counter pain reliever with standard usage instructions and warnings."
+                    }
                 } else {
-                    "In response to '$question': The area in view is a brightly lit indoor space with no immediate hazards in your direct path."
+                    if (isHindi) {
+                        "आपके प्रश्न '$question' के उत्तर में: इस स्थान पर आपके सीधे रास्ते में कोई तात्कालिक बाधा या खतरा नहीं है।"
+                    } else {
+                        "In response to '$question': The area in view is a brightly lit indoor space with no immediate hazards in your direct path."
+                    }
                 }
             }
         }

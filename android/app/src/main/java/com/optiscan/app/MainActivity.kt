@@ -9,6 +9,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
+import com.optiscan.app.data.preferences.PreferencesManager
 import com.optiscan.app.speech.TtsManager
 import com.optiscan.app.ui.screens.MainViewModel
 import com.optiscan.app.ui.screens.OptiScanApp
@@ -32,6 +33,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Initialize preferences and attach to ViewModel
+        val preferencesManager = PreferencesManager(this)
+        viewModel.attachPreferencesManager(preferencesManager)
 
         // Initialize TTS
         ttsManager = TtsManager(this)

@@ -276,3 +276,60 @@ async def test_gemini_provider_empty_text_parts_error():
         with pytest.raises(VisionProviderError, match="returned an empty description"):
             await provider.describe_image(image_bytes=b"fake-bytes")
 
+
+@pytest.mark.asyncio
+async def test_mock_provider_hindi_describe_image():
+    """Verify MockVisionProvider produces Hindi scene description in Devanagari script."""
+    provider = MockVisionProvider()
+    response = await provider.describe_image(image_bytes=b"dummy", language="hi")
+    assert response.status == "success"
+    assert any("\u0900" <= c <= "\u097F" for c in response.answer)
+    assert "गलियारा" in response.answer or "रास्ता" in response.answer
+
+
+@pytest.mark.asyncio
+async def test_mock_provider_hindi_ocr_preserves_medicine_and_numbers():
+    """Verify MockVisionProvider Hindi OCR preserves verbatim medicine names and numbers."""
+    provider = MockVisionProvider()
+    response = await provider.process_ocr(
+        image_bytes=b"",
+        ocr_text="Amoxicillin 500mg Capsule",
+        question="दवा क्या है?",
+        language="hi",
+    )
+    assert response.status == "success"
+    assert "Amoxicillin 500mg" in response.answer
+    assert any("\u0900" <= c <= "\u097F" for c in response.answer)
+
+
+@pytest.mark.asyncio
+async def test_gemini_provider_hindi_payload_construction():
+    """Verify GeminiVisionProvider embeds Hindi instruction and Devanagari prompt."""
+    provider = GeminiVisionProvider(api_key="valid-key")
+    mock_post = AsyncMock()
+    mock_post.return_value = MagicMock(
+        status_code=200,
+        json=MagicMock(return_value={
+            "candidates": [{
+                "content": {"parts": [{"text": "आपके सामने एक खुला दरवाज़ा है।"}]},
+                "finishReason": "STOP",
+            }]
+        }),
+    )
+
+    with patch("httpx.AsyncClient.post", mock_post):
+        response = await provider.describe_image(image_bytes=b"jpeg-bytes", language="hi")
+        assert response.status == "success"
+        assert response.answer == "आपके सामने एक खुला दरवाज़ा है।"
+
+        call_args = mock_post.call_args
+        payload = call_args.kwargs["json"]
+        # System instruction must include Hindi & medicine safety
+        sys_text = payload["system_instruction"]["parts"][0]["text"]
+        assert "MULTILINGUAL & HINDI SUPPORT" in sys_text
+        assert "CRITICAL MEDICATION SAFETY" in sys_text
+        # User prompt must request Hindi
+        user_prompt = payload["contents"][0]["parts"][0]["text"]
+        assert "Hindi" in user_prompt or "हिंदी" in user_prompt
+
+

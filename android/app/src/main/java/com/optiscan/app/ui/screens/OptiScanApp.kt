@@ -12,8 +12,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import com.optiscan.app.navigation.AppLanguage
 import com.optiscan.app.navigation.ScanTask
 import com.optiscan.app.navigation.Screen
+import com.optiscan.app.ui.localization.AppStrings
 import com.optiscan.app.ui.theme.OptiScanTheme
 import androidx.compose.runtime.CompositionLocalProvider
 import com.optiscan.app.ui.components.HapticType
@@ -42,6 +44,7 @@ fun OptiScanApp(
     val hasCameraPermission by viewModel.hasCameraPermission.collectAsState()
     val isAnalyzing by viewModel.isAnalyzing.collectAsState()
     val analysisError by viewModel.analysisError.collectAsState()
+    val strings = AppStrings.get(settings.language)
 
     fun performHaptic(type: HapticType = HapticType.CONFIRMED_ACTION) {
         if (settings.hapticFeedbackEnabled) {
@@ -78,7 +81,7 @@ fun OptiScanApp(
                             viewModel.navigateTo(Screen.Home, clearBackstack = true)
                         },
                         onSpeakIntro = {
-                            viewModel.speak("Welcome to OptiScan. An accessible visual assistant for reading text and exploring your surroundings. Tap Get Started to begin.")
+                            viewModel.speak(strings.welcomeSpokenIntro, isScreenAnnouncement = true)
                         },
                         modifier = modifier.fillMaxSize()
                     )
@@ -86,6 +89,7 @@ fun OptiScanApp(
 
                 is Screen.Home -> {
                     HomeScreen(
+                        language = settings.language,
                         onNavigateToCamera = { task ->
                             performHaptic()
                             viewModel.navigateTo(Screen.Camera(task))
@@ -99,7 +103,7 @@ fun OptiScanApp(
                             viewModel.navigateTo(Screen.Settings)
                         },
                         onAnnounceHome = {
-                            viewModel.speak("OptiScan Home. Select Read Text, Describe Surroundings, or Ask a Question.", isScreenAnnouncement = true)
+                            viewModel.speak(strings.homeSpokenAnnouncement, isScreenAnnouncement = true)
                         },
                         modifier = modifier.fillMaxSize()
                     )
@@ -119,7 +123,13 @@ fun OptiScanApp(
                         viewModel.navigateBack()
                     },
                     onInstructionSpoken = {
-                        viewModel.speak("Point camera at object. Press volume button, tap viewfinder, or tap Capture Photo.", isScreenAnnouncement = true)
+                        val isHindi = settings.language == AppLanguage.HINDI
+                        val instruction = if (isHindi) {
+                            "कैमरा वस्तु की ओर करें। फोटो खींचने के लिए वॉल्यूम बटन दबाएं या फोटो कैप्चर पर टैप करें।"
+                        } else {
+                            "Point camera at object. Press volume button, tap viewfinder, or tap Capture Photo."
+                        }
+                        viewModel.speak(instruction, isScreenAnnouncement = true)
                     },
                     modifier = modifier.fillMaxSize()
                 )
@@ -138,7 +148,7 @@ fun OptiScanApp(
                         viewModel.navigateTo(Screen.Camera(screen.task))
                     },
                     onAnnounce = {
-                        viewModel.speak("Photo captured. Tap Use This Photo to analyze, or Retake Photo to try again.")
+                        viewModel.speak(strings.previewSpokenAnnouncement)
                     },
                     modifier = modifier.fillMaxSize()
                 )
@@ -147,6 +157,7 @@ fun OptiScanApp(
             is Screen.Processing -> {
                 ProcessingScreen(
                     task = screen.task,
+                    language = settings.language,
                     isProcessing = isAnalyzing,
                     errorMessage = analysisError,
                     onStartAnalysis = {
@@ -160,8 +171,8 @@ fun OptiScanApp(
                         viewModel.navigateTo(Screen.Camera(screen.task))
                     },
                     onAnnounceProcessing = {
-                        val taskName = if (screen.task == ScanTask.READ_TEXT) "reading text" else "describing surroundings"
-                        viewModel.speak("Analyzing your image for $taskName. Please hold steady.")
+                        val taskName = if (screen.task == ScanTask.READ_TEXT) strings.processingReadingText else strings.processingDescribing
+                        viewModel.speak(taskName)
                     },
                     modifier = modifier.fillMaxSize()
                 )
@@ -170,6 +181,7 @@ fun OptiScanApp(
             is Screen.ReadTextResult -> {
                 ReadTextResultScreen(
                     text = screen.text,
+                    language = settings.language,
                     shouldRecapture = screen.shouldRecapture,
                     recaptureReason = screen.recaptureReason,
                     isLiveResult = screen.isLiveResult,
@@ -198,6 +210,7 @@ fun OptiScanApp(
             is Screen.DescriptionResult -> {
                 DescriptionResultScreen(
                     description = screen.description,
+                    language = settings.language,
                     shouldRecapture = screen.shouldRecapture,
                     recaptureReason = screen.recaptureReason,
                     isLiveResult = screen.isLiveResult,
@@ -226,6 +239,7 @@ fun OptiScanApp(
             is Screen.AskQuestion -> {
                 AskQuestionScreen(
                     contextContent = screen.contextContent,
+                    language = settings.language,
                     isSpeaking = isSpeaking,
                     onSpeak = { query -> viewModel.speak(query) },
                     onStopSpeech = { viewModel.stopSpeech() },
@@ -234,7 +248,7 @@ fun OptiScanApp(
                     },
                     onBackClick = { viewModel.navigateBack() },
                     onAnnounceScreen = {
-                        viewModel.speak("Ask a Question. Tap the microphone to speak, or type your question below.")
+                        viewModel.speak(strings.askQuestionSpokenIntro)
                     },
                     modifier = modifier.fillMaxSize()
                 )
@@ -252,7 +266,7 @@ fun OptiScanApp(
                     },
                     onBackClick = { viewModel.navigateBack() },
                     onAnnounceSettings = {
-                        viewModel.speak("Settings. Adjust voice playback speed, feedback options, and text scale.")
+                        viewModel.speak("${strings.settingsTitle}. ${strings.settingsSubtitle}")
                     },
                     modifier = modifier.fillMaxSize()
                 )

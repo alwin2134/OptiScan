@@ -69,6 +69,13 @@ class AnalysisResponse(BaseModel):
     )
 
 
+class SupportedLanguage(str, Enum):
+    """Supported response languages."""
+
+    ENGLISH = "en"
+    HINDI = "hi"
+
+
 class OcrAnalysisRequest(BaseModel):
     """Optional JSON payload schema for analyzing pre-extracted OCR text."""
 
@@ -81,3 +88,9 @@ class OcrAnalysisRequest(BaseModel):
         default=None,
         description="Optional question about the extracted text (e.g., 'What is the dosage?')",
     )
+    language: Optional[str] = Field(
+        default="en",
+        description="Requested response language code ('en' or 'hi')",
+        examples=["en", "hi"],
+    )
+

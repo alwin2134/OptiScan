@@ -28,7 +28,9 @@ SYSTEM_INSTRUCTION_ACCESSIBILITY = (
     "partially obscured, or unidentifiable. Never invent text, numbers, brands, or distances.\n"
     "6. OBJECTIVE & CONCISE: Distinguish what is directly visible from what is inferred. Avoid unnecessary flowery "
     "descriptions of colors or aesthetic appearance when the user asks a practical question. Keep responses to 2-4 sentences for TTS.\n"
-    "7. CAUTION WITH ELEVATIONS & TRAFFIC: Express caution regarding curbs, drop-offs, stairs, and traffic, as depth and motion cannot be reliably judged from a single static photograph."
+    "7. CAUTION WITH ELEVATIONS & TRAFFIC: Express caution regarding curbs, drop-offs, stairs, and traffic, as depth and motion cannot be reliably judged from a single static photograph.\n"
+    "8. MULTILINGUAL & HINDI SUPPORT: When the requested language is Hindi ('hi'), respond in fluent, natural Hindi (हिंदी) in Devanagari script. "
+    "CRITICAL MEDICATION SAFETY: Do NOT translate detected brand names of medicines, active pharmaceutical ingredients, numerical strengths, units (such as mg, ml, mcg, tablets), or dosage text in ways that could alter or confuse their meaning. Transcribe numbers, medication names, and product labels faithfully. When reading text, quote the verbatim text accurately without inventing or guessing uncertain characters."
 )
 
 
@@ -46,6 +48,7 @@ class VisionProvider(ABC):
         image_bytes: bytes,
         question: Optional[str] = None,
         mime_type: str = "image/jpeg",
+        language: str = "en",
     ) -> AnalysisResponse:
         """Generate an accessibility-first scene description or answer a question about the image."""
         pass
@@ -57,6 +60,7 @@ class VisionProvider(ABC):
         ocr_text: Optional[str] = None,
         question: Optional[str] = None,
         mime_type: str = "image/jpeg",
+        language: str = "en",
     ) -> AnalysisResponse:
         """Process printed text (supporting client-side Android ML Kit text)."""
         pass
@@ -77,27 +81,45 @@ class MockVisionProvider(VisionProvider):
         image_bytes: bytes,
         question: Optional[str] = None,
         mime_type: str = "image/jpeg",
+        language: str = "en",
     ) -> AnalysisResponse:
         logger.info(
-            "MockVisionProvider describe_image called (payload size: %d bytes, mime: %s, question: %s)",
+            "MockVisionProvider describe_image called (payload size: %d bytes, mime: %s, language: %s, question: %s)",
             len(image_bytes),
             mime_type,
+            language,
             question,
         )
 
-        if question and question.strip():
-            clean_q = question.strip()
-            answer = (
-                f"[Mock AI Description] Direct answer: Yes, there is a clear walking path directly in front of you. "
-                f"(Answering your question: '{clean_q}'). To your right at waist height is a wooden table with a water bottle. "
-                "No immediate floor hazards detected. Proceed with normal caution."
-            )
+        is_hindi = (language or "en").lower().startswith("hi")
+        if is_hindi:
+            if question and question.strip():
+                clean_q = question.strip()
+                answer = (
+                    f"[Mock AI Description] सीधा उत्तर: हाँ, आपके ठीक सामने चलने का एक साफ रास्ता है। "
+                    f"(आपके प्रश्न का उत्तर: '{clean_q}')। आपके दाईं ओर कमर की ऊंचाई पर पानी की बोतल वाली एक मेज है। "
+                    "फर्श पर कोई बाधा नहीं है। सामान्य सावधानी से आगे बढ़ें।"
+                )
+            else:
+                answer = (
+                    "[Mock AI Description] आपके ठीक सामने एक साफ गलियारा है और अंत में एक खुला दरवाज़ा है। "
+                    "आपके दाईं ओर एक मेज है जिस पर लैपटॉप रखा है। बाईं ओर एक चिकनी दीवार है। "
+                    "फर्श समतल है और कोई बाधा नहीं है।"
+                )
         else:
-            answer = (
-                "[Mock AI Description] Directly ahead of you is a clear hallway with an open doorway at the end. "
-                "To your right at waist height is an office desk with a laptop. To your left is a smooth wall. "
-                "The floor is flat with no immediate obstacles."
-            )
+            if question and question.strip():
+                clean_q = question.strip()
+                answer = (
+                    f"[Mock AI Description] Direct answer: Yes, there is a clear walking path directly in front of you. "
+                    f"(Answering your question: '{clean_q}'). To your right at waist height is a wooden table with a water bottle. "
+                    "No immediate floor hazards detected. Proceed with normal caution."
+                )
+            else:
+                answer = (
+                    "[Mock AI Description] Directly ahead of you is a clear hallway with an open doorway at the end. "
+                    "To your right at waist height is an office desk with a laptop. To your left is a smooth wall. "
+                    "The floor is flat with no immediate obstacles."
+                )
 
         return AnalysisResponse(
             status=StatusType.SUCCESS.value,
@@ -113,30 +135,50 @@ class MockVisionProvider(VisionProvider):
         ocr_text: Optional[str] = None,
         question: Optional[str] = None,
         mime_type: str = "image/jpeg",
+        language: str = "en",
     ) -> AnalysisResponse:
         logger.info(
-            "MockVisionProvider process_ocr called (payload size: %d bytes, mime: %s, has_ocr_text: %s)",
+            "MockVisionProvider process_ocr called (payload size: %d bytes, mime: %s, language: %s, has_ocr_text: %s)",
             len(image_bytes),
             mime_type,
+            language,
             ocr_text is not None,
         )
 
+        is_hindi = (language or "en").lower().startswith("hi")
         if ocr_text and ocr_text.strip():
             clean_text = ocr_text.strip()
-            if question and question.strip():
-                answer = (
-                    f"[Android ML Kit OCR] \"{clean_text}\"\n"
-                    f"Direct answer to '{question.strip()}': The information was found on the recognized label."
-                )
+            if is_hindi:
+                if question and question.strip():
+                    answer = (
+                        f"[Android ML Kit OCR] \"{clean_text}\"\n"
+                        f"सीधा उत्तर '{question.strip()}': लेबल पर मिली जानकारी के अनुसार विवरण की पुष्टि की गई।"
+                    )
+                else:
+                    answer = f"[Android ML Kit OCR Text] {clean_text}"
+                reason = "Text recognized by client-side Google ML Kit OCR engine."
             else:
-                answer = f"[Android ML Kit OCR Text] {clean_text}"
-            reason = "Text recognized by client-side Google ML Kit OCR engine."
+                if question and question.strip():
+                    answer = (
+                        f"[Android ML Kit OCR] \"{clean_text}\"\n"
+                        f"Direct answer to '{question.strip()}': The information was found on the recognized label."
+                    )
+                else:
+                    answer = f"[Android ML Kit OCR Text] {clean_text}"
+                reason = "Text recognized by client-side Google ML Kit OCR engine."
         else:
-            answer = (
-                "[Mock OCR Fallback] ROOM 302 - ACCESSIBLE ENTRANCE. PLEASE RING BELL FOR ASSISTANCE. "
-                "(Note: Google ML Kit on Android is the primary OCR engine; server-side OCR was not performed on image bytes)."
-            )
-            reason = "Google ML Kit on Android handles primary on-device text recognition."
+            if is_hindi:
+                answer = (
+                    "[Mock OCR Fallback] ROOM 302 - ACCESSIBLE ENTRANCE. कृपया सहायता के लिए घंटी बजाएं। "
+                    "(नोट: Android पर Google ML Kit प्राथमिक OCR इंजन है; सर्वर ने छवि बाइट्स पर पाठ पहचान नहीं की)।"
+                )
+                reason = "Google ML Kit on Android handles primary on-device text recognition."
+            else:
+                answer = (
+                    "[Mock OCR Fallback] ROOM 302 - ACCESSIBLE ENTRANCE. PLEASE RING BELL FOR ASSISTANCE. "
+                    "(Note: Google ML Kit on Android is the primary OCR engine; server-side OCR was not performed on image bytes)."
+                )
+                reason = "Google ML Kit on Android handles primary on-device text recognition."
 
         return AnalysisResponse(
             status=StatusType.SUCCESS.value,
@@ -168,22 +210,39 @@ class GeminiVisionProvider(VisionProvider):
         image_bytes: bytes,
         question: Optional[str] = None,
         mime_type: str = "image/jpeg",
+        language: str = "en",
     ) -> AnalysisResponse:
         if not image_bytes:
             raise VisionProviderError("Image data cannot be empty.")
 
         b64_image = base64.b64encode(image_bytes).decode("utf-8")
+        is_hindi = (language or "en").lower().startswith("hi")
 
         if question and question.strip():
-            user_prompt = (
-                f"Question from user: '{question.strip()}'.\n"
-                "Answer this question directly first, then concisely note any immediate obstacles or walking path details."
-            )
+            if is_hindi:
+                user_prompt = (
+                    f"Question from user: '{question.strip()}'.\n"
+                    "Answer this question directly first in natural, clear Hindi (हिंदी in Devanagari script), "
+                    "then concisely note any immediate obstacles or walking path details. "
+                    "Keep medicine brand names, numbers, and dosage units in their original form."
+                )
+            else:
+                user_prompt = (
+                    f"Question from user: '{question.strip()}'.\n"
+                    "Answer this question directly first, then concisely note any immediate obstacles or walking path details."
+                )
         else:
-            user_prompt = (
-                "Describe this scene concisely for a blind or low-vision user. "
-                "Highlight key objects, their spatial positions relative to the user, and immediate hazards or walking path status."
-            )
+            if is_hindi:
+                user_prompt = (
+                    "Describe this scene concisely for a blind or low-vision user in natural, clear Hindi (हिंदी in Devanagari script). "
+                    "Highlight key objects, their spatial positions relative to the user, and immediate hazards or walking path status. "
+                    "Keep responses concise (2-4 sentences) for text-to-speech. Do not invent details."
+                )
+            else:
+                user_prompt = (
+                    "Describe this scene concisely for a blind or low-vision user. "
+                    "Highlight key objects, their spatial positions relative to the user, and immediate hazards or walking path status."
+                )
 
         generation_config = {
             "temperature": 0.2,
@@ -302,11 +361,16 @@ class GeminiVisionProvider(VisionProvider):
         ocr_text: Optional[str] = None,
         question: Optional[str] = None,
         mime_type: str = "image/jpeg",
+        language: str = "en",
     ) -> AnalysisResponse:
+        is_hindi = (language or "en").lower().startswith("hi")
         if ocr_text and ocr_text.strip():
             answer = f"Recognized text: {ocr_text.strip()}"
             if question and question.strip():
-                answer += f"\nAnswer to '{question.strip()}': Based on the text above, details confirmed."
+                if is_hindi:
+                    answer += f"\n'{question.strip()}' का उत्तर: दिए गए टेक्स्ट के आधार पर जानकारी की पुष्टि की गई।"
+                else:
+                    answer += f"\nAnswer to '{question.strip()}': Based on the text above, details confirmed."
             return AnalysisResponse(
                 status=StatusType.SUCCESS.value,
                 task=TaskType.READ_TEXT.value,
@@ -316,12 +380,21 @@ class GeminiVisionProvider(VisionProvider):
             )
 
         # Server-side vision fallback for text extraction
-        prompt = (
-            f"Transcribe the printed text in this image and answer: '{question.strip()}'"
-            if question and question.strip()
-            else "Transcribe the prominent printed text in this image verbatim. Note signs, headings, or product names."
-        )
-        response = await self.describe_image(image_bytes, question=prompt, mime_type=mime_type)
+        if is_hindi:
+            prompt = (
+                f"Transcribe the printed text in this image verbatim and answer in Hindi: '{question.strip()}'. "
+                "CRITICAL: Do not translate medicine brand names, numbers, or dosage units."
+                if question and question.strip()
+                else "Transcribe the prominent printed text in this image verbatim. Note signs, headings, or product names. "
+                     "Explain concisely in natural Hindi, keeping English brand names, numbers, and dosage units intact."
+            )
+        else:
+            prompt = (
+                f"Transcribe the printed text in this image and answer: '{question.strip()}'"
+                if question and question.strip()
+                else "Transcribe the prominent printed text in this image verbatim. Note signs, headings, or product names."
+            )
+        response = await self.describe_image(image_bytes, question=prompt, mime_type=mime_type, language=language)
         return AnalysisResponse(
             status=response.status,
             task=TaskType.READ_TEXT.value,

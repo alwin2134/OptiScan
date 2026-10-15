@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.optiscan.app.data.mock.MockData
+import com.optiscan.app.navigation.AppLanguage
 import com.optiscan.app.ui.components.ButtonVariant
 import com.optiscan.app.ui.components.OptiScanButton
 import com.optiscan.app.ui.components.ResultCard
@@ -36,6 +37,7 @@ import com.optiscan.app.ui.components.ScreenTitle
 import com.optiscan.app.ui.components.SpeechControls
 import com.optiscan.app.ui.components.StatusLevel
 import com.optiscan.app.ui.components.StatusMessage
+import com.optiscan.app.ui.localization.AppStrings
 import com.optiscan.app.ui.theme.BackgroundNearBlack
 import com.optiscan.app.ui.theme.TextLightGrey
 
@@ -47,6 +49,7 @@ import com.optiscan.app.ui.theme.TextLightGrey
 @Composable
 fun ReadTextResultScreen(
     text: String = MockData.SAMPLE_PRODUCT_LABEL,
+    language: AppLanguage = AppLanguage.ENGLISH,
     shouldRecapture: Boolean = false,
     recaptureReason: String? = null,
     isLiveResult: Boolean = true,
@@ -60,13 +63,14 @@ fun ReadTextResultScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val strings = AppStrings.get(language)
     var showCopyBanner by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         if (shouldRecapture) {
-            onAnnounceResult("Recapture recommended. ${recaptureReason ?: "Text is too blurry to read. Tap Retake Photo to try again."}")
+            onAnnounceResult("${strings.recaptureAnnouncement} ${recaptureReason ?: strings.recaptureBlurryReason}")
         } else {
-            onAnnounceResult("Text extracted from image. Tap Read Aloud to listen.")
+            onAnnounceResult(strings.textExtractedAnnouncement)
         }
     }
 
@@ -84,42 +88,42 @@ fun ReadTextResultScreen(
         ) {
             // Screen Header
             ScreenTitle(
-                title = if (shouldRecapture) "Recapture Document" else "Extracted Text",
-                subtitle = if (shouldRecapture) "Image quality check notification" else "Optical Character Recognition Results",
+                title = if (shouldRecapture) strings.recaptureTitle else strings.extractedTextTitle,
+                subtitle = if (shouldRecapture) strings.recaptureSubtitle else strings.extractedTextSubtitle,
                 onBackClick = onBackToHome,
-                backContentDescription = "Return to Home screen"
+                backContentDescription = strings.returnToPreviousScreen
             )
 
             if (shouldRecapture) {
                 // High-visibility Recapture Warning
                 StatusMessage(
-                    title = "Recapture Recommended",
-                    message = recaptureReason ?: "The text is too blurry or low contrast to read reliably.",
+                    title = strings.recaptureTitle,
+                    message = recaptureReason ?: strings.recaptureBlurryReason,
                     level = StatusLevel.WARNING
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 OptiScanButton(
-                    text = "Retake Photo",
+                    text = strings.retakePhoto,
                     onClick = onCaptureAnother,
                     variant = ButtonVariant.PRIMARY,
                     icon = Icons.Default.CameraAlt,
-                    contentDesc = "Retake photo with camera"
+                    contentDesc = "${strings.retakePhoto} button"
                 )
 
                 OptiScanButton(
-                    text = "Back to Home",
+                    text = strings.backToHome,
                     onClick = onBackToHome,
                     variant = ButtonVariant.OUTLINE,
                     icon = Icons.Default.Home,
-                    contentDesc = "Return to Home screen button"
+                    contentDesc = strings.backToHome
                 )
             } else {
                 // Copy feedback announcement banner
                 if (showCopyBanner) {
                     StatusMessage(
-                        message = "All extracted text copied to your clipboard.",
+                        message = strings.copiedToClipboard,
                         level = StatusLevel.SUCCESS,
                         title = "Copied"
                     )
@@ -127,7 +131,7 @@ fun ReadTextResultScreen(
 
                 // Text Result Card
                 ResultCard(
-                    title = "Document Text",
+                    title = strings.documentTextCardTitle,
                     content = text,
                     noticeText = if (isLiveResult) "AI Text Extraction by Google Gemini" else "Simulated demonstration output",
                     onCopyClick = {
@@ -143,36 +147,36 @@ fun ReadTextResultScreen(
                     isSpeaking = isSpeaking,
                     onReadAloud = { onReadAloud(text) },
                     onStopSpeech = onStopSpeech,
-                    readAloudText = "Read Aloud All Text"
+                    readAloudText = strings.readAloudAllText
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
 
                 // Action: Ask a Question about this text
                 OptiScanButton(
-                    text = "Ask a Question About This Text",
+                    text = strings.askQuestionAboutText,
                     onClick = { onAskQuestion(text) },
                     variant = ButtonVariant.PRIMARY,
                     icon = Icons.AutoMirrored.Filled.HelpOutline,
-                    contentDesc = "Ask a question about the medicine label text"
+                    contentDesc = "${strings.askQuestionAboutText} button"
                 )
 
                 // Action: Capture Another Image
                 OptiScanButton(
-                    text = "Capture Another Document",
+                    text = strings.captureAnotherDocument,
                     onClick = onCaptureAnother,
                     variant = ButtonVariant.SURFACE,
                     icon = Icons.Default.CameraAlt,
-                    contentDesc = "Capture another image button"
+                    contentDesc = "${strings.captureAnotherDocument} button"
                 )
 
                 // Navigation: Back to Home
                 OptiScanButton(
-                    text = "Back to Home",
+                    text = strings.backToHome,
                     onClick = onBackToHome,
                     variant = ButtonVariant.OUTLINE,
                     icon = Icons.Default.Home,
-                    contentDesc = "Return to Home screen button"
+                    contentDesc = strings.backToHome
                 )
             }
 

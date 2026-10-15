@@ -12,8 +12,11 @@ import kotlin.coroutines.resume
  * Service wrapper for on-device OCR using Google ML Kit Text Recognition.
  */
 class OcrService(
-    private val recognizer: TextRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+    recognizer: TextRecognizer? = null
 ) {
+    private val recognizer: TextRecognizer by lazy {
+        recognizer ?: TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+    }
 
     /**
      * Recognize printed text from an in-memory Bitmap.

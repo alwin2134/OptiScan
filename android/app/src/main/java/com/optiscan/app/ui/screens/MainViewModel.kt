@@ -12,10 +12,13 @@ import com.optiscan.app.data.mock.MockData
 import com.optiscan.app.data.models.TaskTypes
 import com.optiscan.app.data.repository.ScanRepository
 import com.optiscan.app.data.repository.ScanRepositoryImpl
+import com.optiscan.app.data.preferences.PreferencesManager
+import com.optiscan.app.navigation.AppLanguage
 import com.optiscan.app.navigation.AppSettings
 import com.optiscan.app.navigation.ScanTask
 import com.optiscan.app.navigation.Screen
 import com.optiscan.app.speech.TtsManager
+import com.optiscan.app.ui.localization.AppStrings
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,7 +31,8 @@ import kotlinx.coroutines.launch
  */
 class MainViewModel(
     val cameraManager: CameraManager = CameraManager(),
-    val repository: ScanRepository = ScanRepositoryImpl()
+    val repository: ScanRepository = ScanRepositoryImpl(),
+    private var preferencesManager: PreferencesManager? = null
 ) : ViewModel() {
 
     private val tag = "MainViewModel"
@@ -70,13 +74,26 @@ class MainViewModel(
     val analysisError: StateFlow<String?> = _analysisError.asStateFlow()
 
     init {
-        repository.setMockMode(_settings.value.useMockBackend)
+        val loadedSettings = preferencesManager?.loadSettings() ?: AppSettings()
+        _settings.value = loadedSettings
+        repository.setMockMode(loadedSettings.useMockBackend)
+    }
+
+    fun attachPreferencesManager(prefs: PreferencesManager) {
+        this.preferencesManager = prefs
+        val loaded = prefs.loadSettings()
+        _settings.value = loaded
+        repository.setMockMode(loaded.useMockBackend)
+        applySettingsToTts(loaded)
     }
 
     fun attachTtsManager(tts: TtsManager) {
         this.ttsManager = tts
         tts.onSpeechStateChanged = { speaking ->
             _isSpeaking.value = speaking
+        }
+        tts.onLanguageFallback = { lang ->
+            Log.w(tag, "TTS language fallback occurred for $lang")
         }
         applySettingsToTts(_settings.value)
     }
@@ -131,7 +148,8 @@ class MainViewModel(
      */
     fun capturePhoto(context: Context, task: ScanTask) {
         viewModelScope.launch {
-            speak("Capturing photo. Please hold steady.")
+            val isHindi = _settings.value.language == AppLanguage.HINDI
+            speak(if (isHindi) "फोटो खींच रहे हैं। कृपया फोन स्थिर रखें।" else "Capturing photo. Please hold steady.")
             if (_hasCameraPermission.value) {
                 val result = cameraManager.capturePhoto(context)
                 if (result.isSuccess) {
@@ -159,6 +177,9 @@ class MainViewModel(
 
         if (!isVolumeUp && !isVolumeDown) return false
 
+        val isHindi = _settings.value.language == AppLanguage.HINDI
+        val strings = AppStrings.get(_settings.value.language)
+
         when (val screen = _currentScreen.value) {
             is Screen.Camera -> {
                 // Shutter trigger on Camera screen
@@ -169,10 +190,10 @@ class MainViewModel(
             is Screen.ImagePreview -> {
                 // Volume Up: Use photo; Volume Down: Retake
                 if (isVolumeUp) {
-                    speak("Using photo. Analyzing.")
+                    speak(if (isHindi) "फोटो का उपयोग कर रहे हैं। विश्लेषण जारी है।" else "Using photo. Analyzing.")
                     navigateTo(Screen.Processing(screen.task, screen.imageBytes))
                 } else {
-                    speak("Retaking photo. Camera opened.")
+                    speak(if (isHindi) "फोटो दोबारा खींच रहे हैं। कैमरा खुला।" else "Retaking photo. Camera opened.")
                     navigateTo(Screen.Camera(screen.task))
                 }
                 return true
@@ -199,13 +220,13 @@ class MainViewModel(
             }
 
             is Screen.Welcome -> {
-                speak("Get Started activated. Welcome to OptiScan Home.")
+                speak(if (isHindi) "शुरू करें सक्रिय हुआ। ऑप्टीस्कैन होम में आपका स्वागत है।" else "Get Started activated. Welcome to OptiScan Home.")
                 navigateTo(Screen.Home, clearBackstack = true)
                 return true
             }
 
             is Screen.Home -> {
-                speak("OptiScan Home. Select Read Text, Describe Surroundings, or Ask a Question.")
+                speak(strings.homeSpokenAnnouncement)
                 return true
             }
 
@@ -214,14 +235,27 @@ class MainViewModel(
     }
 
     fun updateSettings(newSettings: AppSettings) {
+        val previousLanguage = _settings.value.language
         _settings.value = newSettings
+        preferencesManager?.saveSettings(newSettings)
         repository.setMockMode(newSettings.useMockBackend)
         applySettingsToTts(newSettings)
+
+        // Announce language change to user with immediate accessibility feedback
+        if (previousLanguage != newSettings.language) {
+            val strings = AppStrings.get(newSettings.language)
+            if (ttsManager?.isLanguageFallbackActive == true && newSettings.language == AppLanguage.HINDI) {
+                speak(strings.hindiTtsFallbackNotice)
+            } else {
+                speak(strings.languageChangedAnnouncement)
+            }
+        }
     }
 
     private fun applySettingsToTts(appSettings: AppSettings) {
         ttsManager?.voiceFeedbackEnabled = appSettings.voiceFeedbackEnabled
         ttsManager?.setSpeechRate(appSettings.speechRate)
+        ttsManager?.setLanguage(appSettings.language)
     }
 
     // Visual Analysis Pipeline
@@ -232,11 +266,17 @@ class MainViewModel(
             return
         }
 
+        val lang = _settings.value.language
+        val strings = AppStrings.get(lang)
         val bytesToAnalyze = imageBytes ?: _capturedBytes.value
         val isMock = repository.isMockMode()
 
         if (bytesToAnalyze == null && !isMock) {
-            val err = "No captured image data found. Please capture a photo first."
+            val err = if (lang == AppLanguage.HINDI) {
+                "कोई फोटो डेटा नहीं मिला। कृपया पहले फोटो लें।"
+            } else {
+                "No captured image data found. Please capture a photo first."
+            }
             _analysisError.value = err
             speak(err)
             return
@@ -249,7 +289,7 @@ class MainViewModel(
             try {
                 when (task) {
                     ScanTask.READ_TEXT -> {
-                        speak("Reading printed text. Please hold steady.")
+                        speak(strings.processingReadingText)
 
                         // Step 1: Run on-device ML Kit OCR first if bitmap is available
                         var onDeviceText: String? = null
@@ -268,17 +308,18 @@ class MainViewModel(
                             }
                         }
 
-                        // Step 2: Query repository with image and optional on-device OCR text
+                        // Step 2: Query repository with image and optional on-device OCR text in selected language
                         val result = repository.analyzeImage(
                             imageBytes = bytesToAnalyze ?: ByteArray(0),
                             task = TaskTypes.READ_TEXT,
-                            ocrText = onDeviceText
+                            ocrText = onDeviceText,
+                            language = lang.code
                         )
 
                         result.onSuccess { response ->
                             _isAnalyzing.value = false
                             if (response.shouldRecapture) {
-                                val reason = response.reason ?: "Image is unclear or blurry. Please hold steady and recapture."
+                                val reason = response.reason ?: strings.recaptureBlurryReason
                                 navigateTo(
                                     Screen.ReadTextResult(
                                         text = "",
@@ -287,9 +328,13 @@ class MainViewModel(
                                         isLiveResult = !isMock
                                     )
                                 )
-                                speak("Recapture recommended. $reason")
+                                speak("${strings.recaptureAnnouncement} $reason")
                             } else {
-                                val finalAnswer = response.answer ?: onDeviceText ?: "No printed text detected in the image."
+                                val finalAnswer = response.answer ?: onDeviceText ?: if (lang == AppLanguage.HINDI) {
+                                    "छवि में कोई छपा हुआ टेक्स्ट नहीं मिला।"
+                                } else {
+                                    "No printed text detected in the image."
+                                }
                                 navigateTo(
                                     Screen.ReadTextResult(
                                         text = finalAnswer,
@@ -297,7 +342,7 @@ class MainViewModel(
                                         isLiveResult = !isMock
                                     )
                                 )
-                                speak("Text extracted. $finalAnswer")
+                                speak("${strings.textExtractedAnnouncement} $finalAnswer")
                             }
                         }.onFailure { ex ->
                             // Step 3: Graceful fallback to on-device OCR if cloud call failed
@@ -307,31 +352,36 @@ class MainViewModel(
                                     Screen.ReadTextResult(
                                         text = onDeviceText,
                                         shouldRecapture = false,
-                                        recaptureReason = "Cloud analysis unreachable. Displaying on-device OCR.",
+                                        recaptureReason = strings.onDeviceFallbackNotice,
                                         isLiveResult = false
                                     )
                                 )
-                                speak("Cloud connection failed. Using on-device text recognition. $onDeviceText")
+                                speak("${strings.onDeviceFallbackSpoken} $onDeviceText")
                             } else {
                                 _isAnalyzing.value = false
-                                val errorMsg = ex.message ?: "Failed to read text from image."
+                                val errorMsg = ex.message ?: if (lang == AppLanguage.HINDI) {
+                                    "छवि से टेक्स्ट पढ़ने में विफलता।"
+                                } else {
+                                    "Failed to read text from image."
+                                }
                                 _analysisError.value = errorMsg
-                                speak("Error: $errorMsg. Tap retry to try again.")
+                                speak("${strings.errorPrefix} $errorMsg. ${strings.retry}")
                             }
                         }
                     }
 
                     ScanTask.DESCRIBE_SURROUNDINGS -> {
-                        speak("Analyzing surroundings. Please hold steady.")
+                        speak(strings.processingDescribing)
                         val result = repository.analyzeImage(
                             imageBytes = bytesToAnalyze ?: ByteArray(0),
-                            task = TaskTypes.DESCRIBE_IMAGE
+                            task = TaskTypes.DESCRIBE_IMAGE,
+                            language = lang.code
                         )
 
                         result.onSuccess { response ->
                             _isAnalyzing.value = false
                             if (response.shouldRecapture) {
-                                val reason = response.reason ?: "Image is too blurry. Please retake photo."
+                                val reason = response.reason ?: strings.recaptureBlurryReason
                                 navigateTo(
                                     Screen.DescriptionResult(
                                         description = "",
@@ -340,9 +390,13 @@ class MainViewModel(
                                         isLiveResult = !isMock
                                     )
                                 )
-                                speak("Recapture recommended. $reason")
+                                speak("${strings.recaptureAnnouncement} $reason")
                             } else {
-                                val description = response.answer ?: "No description could be generated."
+                                val description = response.answer ?: if (lang == AppLanguage.HINDI) {
+                                    "कोई विवरण उपलब्ध नहीं हो सका।"
+                                } else {
+                                    "No description could be generated."
+                                }
                                 navigateTo(
                                     Screen.DescriptionResult(
                                         description = description,
@@ -350,13 +404,17 @@ class MainViewModel(
                                         isLiveResult = !isMock
                                     )
                                 )
-                                speak("Scene description ready. $description")
+                                speak("${strings.sceneDescriptionAnnouncement} $description")
                             }
                         }.onFailure { ex ->
                             _isAnalyzing.value = false
-                            val errorMsg = ex.message ?: "Failed to analyze scene surroundings."
+                            val errorMsg = ex.message ?: if (lang == AppLanguage.HINDI) {
+                                "आस-पास के वातावरण का विश्लेषण करने में विफलता।"
+                            } else {
+                                "Failed to analyze scene surroundings."
+                            }
                             _analysisError.value = errorMsg
-                            speak("Error: $errorMsg. Tap retry to try again.")
+                            speak("${strings.errorPrefix} $errorMsg. ${strings.retry}")
                         }
                     }
                 }
@@ -365,9 +423,13 @@ class MainViewModel(
                 Log.i(tag, "Analysis task cancelled")
             } catch (e: Exception) {
                 _isAnalyzing.value = false
-                val errorMsg = e.message ?: "An unexpected error occurred."
+                val errorMsg = e.message ?: if (lang == AppLanguage.HINDI) {
+                    "एक अप्रत्याशित त्रुटि उत्पन्न हुई।"
+                } else {
+                    "An unexpected error occurred."
+                }
                 _analysisError.value = errorMsg
-                speak("Analysis error: $errorMsg")
+                speak("${strings.errorPrefix} $errorMsg")
             }
         }
     }
@@ -376,7 +438,8 @@ class MainViewModel(
         analysisJob?.cancel()
         _isAnalyzing.value = false
         _analysisError.value = null
-        speak("Image analysis cancelled.")
+        val strings = AppStrings.get(_settings.value.language)
+        speak(strings.analysisCancelledSpoken)
     }
 
     fun askQuestion(
@@ -387,28 +450,31 @@ class MainViewModel(
         if (query.isBlank()) return
         val bytes = _capturedBytes.value
         val isMock = repository.isMockMode()
+        val lang = _settings.value.language
+        val strings = AppStrings.get(lang)
 
         if (isMock || bytes == null) {
-            val answer = MockData.answerQuestion(query, contextContent)
+            val answer = MockData.answerQuestion(query, contextContent, lang.code)
             onAnswerReceived(answer)
             speak(answer)
             return
         }
 
         viewModelScope.launch {
-            speak("Finding answer to your question...")
+            speak(strings.findingAnswerSpoken)
             val result = repository.analyzeImage(
                 imageBytes = bytes,
                 task = TaskTypes.DESCRIBE_IMAGE,
                 question = query,
-                ocrText = contextContent
+                ocrText = contextContent,
+                language = lang.code
             )
             result.onSuccess { response ->
-                val answer = response.answer ?: MockData.answerQuestion(query, contextContent)
+                val answer = response.answer ?: MockData.answerQuestion(query, contextContent, lang.code)
                 onAnswerReceived(answer)
                 speak(answer)
             }.onFailure {
-                val fallback = MockData.answerQuestion(query, contextContent)
+                val fallback = MockData.answerQuestion(query, contextContent, lang.code)
                 onAnswerReceived(fallback)
                 speak(fallback)
             }
@@ -435,7 +501,8 @@ class MainViewModel(
 
     fun testSpeechRate(rate: Float) {
         ttsManager?.setSpeechRate(rate)
-        speak("This is a sample sentence spoken at ${String.format("%.2f", rate)} speed multiplier.")
+        val strings = AppStrings.get(_settings.value.language)
+        speak(strings.testSpeechSentence)
     }
 
     override fun onCleared() {

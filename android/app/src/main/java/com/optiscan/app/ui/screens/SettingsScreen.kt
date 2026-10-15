@@ -32,10 +32,12 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.optiscan.app.navigation.AppLanguage
 import com.optiscan.app.navigation.AppSettings
 import com.optiscan.app.ui.components.ButtonVariant
 import com.optiscan.app.ui.components.OptiScanButton
 import com.optiscan.app.ui.components.ScreenTitle
+import com.optiscan.app.ui.localization.AppStrings
 import com.optiscan.app.ui.theme.ActionPrimaryBlue
 import com.optiscan.app.ui.theme.ActionSecondaryGreen
 import com.optiscan.app.ui.theme.BackgroundNearBlack
@@ -48,7 +50,7 @@ import kotlin.math.roundToInt
 
 /**
  * Screen I: Settings & Accessibility Preferences
- * Configures speech rate, voice feedback toggle, haptics, and text scale.
+ * Configures language, speech rate, voice feedback toggle, haptics, and text scale.
  */
 @Composable
 fun SettingsScreen(
@@ -59,6 +61,8 @@ fun SettingsScreen(
     onAnnounceSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings = AppStrings.get(settings.language)
+
     LaunchedEffect(Unit) {
         onAnnounceSettings()
     }
@@ -77,16 +81,66 @@ fun SettingsScreen(
         ) {
             // Header
             ScreenTitle(
-                title = "Settings",
-                subtitle = "Voice & Accessibility Preferences",
+                title = strings.settingsTitle,
+                subtitle = strings.settingsSubtitle,
                 onBackClick = onBackClick,
-                backContentDescription = "Return to previous screen"
+                backContentDescription = strings.returnToPreviousScreen
             )
 
-            // Section 1: Voice Feedback Switch
+            // Section 1: App Language Selection
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(SurfaceDarkCharcoal, RoundedCornerShape(16.dp))
+                    .border(1.5.dp, BorderSubtle, RoundedCornerShape(16.dp))
+                    .padding(18.dp)
+            ) {
+                Text(
+                    text = strings.languageSectionTitle,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = TextWhite
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Text(
+                    text = strings.languageSectionSubtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextLightGrey
+                )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    AppLanguage.entries.forEach { lang ->
+                        val isSelected = settings.language == lang
+                        OptiScanButton(
+                            text = if (lang == AppLanguage.HINDI) "हिंदी (Hindi)" else "English",
+                            onClick = {
+                                if (settings.language != lang) {
+                                    onUpdateSettings(settings.copy(language = lang))
+                                }
+                            },
+                            variant = if (isSelected) ButtonVariant.PRIMARY else ButtonVariant.SURFACE,
+                            minHeight = 48,
+                            contentDesc = if (isSelected) {
+                                "${lang.displayName} selected"
+                            } else {
+                                "Select ${lang.displayName} language"
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+
+            // Section 2: Voice Feedback Switch
             SettingToggleCard(
-                title = "Voice Spoken Feedback",
-                description = "Automatically announce screen titles, results, and action guidance.",
+                title = strings.voiceFeedbackTitle,
+                description = strings.voiceFeedbackSubtitle,
                 checked = settings.voiceFeedbackEnabled,
                 onCheckedChange = { checked ->
                     onUpdateSettings(settings.copy(voiceFeedbackEnabled = checked))
@@ -107,7 +161,7 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "Speech Rate",
+                        text = strings.speechRateTitle,
                         style = MaterialTheme.typography.titleMedium,
                         color = TextWhite
                     )
@@ -121,7 +175,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
-                    text = "Adjust the playback speed of the spoken screen voice.",
+                    text = strings.speechRateSubtitle,
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextLightGrey
                 )
@@ -151,7 +205,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 OptiScanButton(
-                    text = "Test Speech Speed",
+                    text = strings.testSpeechSpeed,
                     onClick = { onTestSpeechRate(settings.speechRate) },
                     variant = ButtonVariant.SURFACE,
                     icon = Icons.AutoMirrored.Filled.VolumeUp,
@@ -160,7 +214,7 @@ fun SettingsScreen(
                 )
             }
 
-            // Section 3: Text Size Preference
+            // Section 4: Text Size Preference
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -169,7 +223,7 @@ fun SettingsScreen(
                     .padding(18.dp)
             ) {
                 Text(
-                    text = "Text Size Scale",
+                    text = strings.textSizeTitle,
                     style = MaterialTheme.typography.titleMedium,
                     color = TextWhite
                 )
@@ -207,37 +261,41 @@ fun SettingsScreen(
                 }
             }
 
-            // Section 4: Haptic Feedback Toggle
+            // Section 5: Haptic Feedback Toggle
             SettingToggleCard(
-                title = "Haptic Vibration Feedback",
-                description = "Vibrate device gently upon successful capture and copy actions.",
+                title = strings.hapticFeedbackTitle,
+                description = strings.hapticFeedbackSubtitle,
                 checked = settings.hapticFeedbackEnabled,
                 onCheckedChange = { checked ->
                     onUpdateSettings(settings.copy(hapticFeedbackEnabled = checked))
                 }
             )
 
-            // Section 5: Offline Mock Mode
+            // Section 6: Offline Mock Mode
             SettingToggleCard(
-                title = "Offline Mock Mode",
-                description = "Use local simulated responses instead of connecting to the live AI backend.",
+                title = strings.offlineMockTitle,
+                description = strings.offlineMockSubtitle,
                 checked = settings.useMockBackend,
                 onCheckedChange = { checked ->
                     onUpdateSettings(settings.copy(useMockBackend = checked))
                 }
             )
 
-            // Section 6: 3-Tap Accessible Navigation Toggle
+            // Section 7: 3-Tap Accessible Navigation Toggle
+            val isHindi = settings.language == AppLanguage.HINDI
             SettingToggleCard(
-                title = "3-Tap Navigation (Touch Protection)",
-                description = "Single tap: ignores action for safety. Double tap: speaks button description aloud. Triple tap: activates the action.",
+                title = if (isHindi) "3-टैप नेविगेशन (टच सुरक्षा)" else "3-Tap Navigation (Touch Protection)",
+                description = if (isHindi)
+                    "सिंगल टैप: सुरक्षा के लिए अनदेखा करता है। डबल टैप: बटन का विवरण बोलता है। ट्रिपल टैप: क्रिया को सक्रिय करता है।"
+                else
+                    "Single tap: ignores action for safety. Double tap: speaks button description aloud. Triple tap: activates the action.",
                 checked = settings.tripleTapNavigationEnabled,
                 onCheckedChange = { checked ->
                     onUpdateSettings(settings.copy(tripleTapNavigationEnabled = checked))
                 }
             )
 
-            // Section 6: About & Version
+            // Section 8: About & Version
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -246,13 +304,13 @@ fun SettingsScreen(
                     .padding(18.dp)
             ) {
                 Text(
-                    text = "About OptiScan",
+                    text = strings.aboutTitle,
                     style = MaterialTheme.typography.titleMedium,
                     color = TextWhite
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "Version 1.0.0 (Hackathon MVP)\nDesigned for blind and low-vision accessibility. Supports TalkBack screen reading, large touch targets, and high-contrast color standards.",
+                    text = strings.aboutDescription,
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextLightGrey
                 )
@@ -260,11 +318,11 @@ fun SettingsScreen(
 
             // Back to Home Button
             OptiScanButton(
-                text = "Back to Home",
+                text = strings.backToHome,
                 onClick = onBackClick,
                 variant = ButtonVariant.OUTLINE,
                 icon = Icons.Default.Home,
-                contentDesc = "Return to Home screen button",
+                contentDesc = strings.returnToPreviousScreen,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
         }

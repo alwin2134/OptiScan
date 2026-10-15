@@ -4,6 +4,7 @@ import android.content.Context
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
+import com.optiscan.app.navigation.AppLanguage
 import java.util.Locale
 
 /**
@@ -18,21 +19,25 @@ class TtsManager(
     private var tts: TextToSpeech? = TextToSpeech(context.applicationContext, this)
 
     var isReady: Boolean = false
-        private set
+        internal set
 
     var voiceFeedbackEnabled: Boolean = true
     var currentSpeechRate: Float = 1.0f
         private set
 
+    var currentLanguage: AppLanguage = AppLanguage.ENGLISH
+        private set
+
+    var isLanguageFallbackActive: Boolean = false
+        internal set
+
+    var onLanguageFallback: ((AppLanguage) -> Unit)? = null
+
     var onSpeechStateChanged: ((isSpeaking: Boolean) -> Unit)? = null
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
-            val result = tts?.setLanguage(Locale.getDefault())
-            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                Log.w(tag, "Default locale not supported, falling back to US English")
-                tts?.language = Locale.US
-            }
+            applyLanguage(currentLanguage)
             tts?.setSpeechRate(currentSpeechRate)
             tts?.setPitch(1.0f)
 
@@ -63,6 +68,49 @@ class TtsManager(
             isReady = false
             onInitComplete?.invoke(false)
         }
+    }
+
+    /**
+     * Set language for speech output with graceful fallback to US English.
+     * Returns true if the requested language was successfully configured.
+     */
+    fun setLanguage(language: AppLanguage): Boolean {
+        currentLanguage = language
+        if (!isReady) return false
+        return applyLanguage(language)
+    }
+
+    internal fun applyLanguage(language: AppLanguage): Boolean {
+        val targetLocale = when (language) {
+            AppLanguage.HINDI -> Locale("hi", "IN")
+            AppLanguage.ENGLISH -> Locale.US
+        }
+        val availability = tts?.isLanguageAvailable(targetLocale) ?: TextToSpeech.LANG_NOT_SUPPORTED
+        val isSupported = availability != TextToSpeech.LANG_NOT_SUPPORTED && availability != TextToSpeech.LANG_MISSING_DATA
+
+        if (isSupported) {
+            val result = tts?.setLanguage(targetLocale)
+            if (result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED) {
+                isLanguageFallbackActive = false
+                Log.i(tag, "TTS language successfully configured to: $targetLocale")
+                return true
+            }
+        }
+
+        // Graceful fallback to English if Hindi voice data is missing or unsupported
+        Log.w(tag, "Requested locale $targetLocale unavailable (status code: $availability). Falling back to Locale.US")
+        tts?.language = Locale.US
+        val fallbackOccurred = (language != AppLanguage.ENGLISH)
+        isLanguageFallbackActive = fallbackOccurred
+        if (fallbackOccurred) {
+            onLanguageFallback?.invoke(language)
+        }
+        return false
+    }
+
+    internal fun setTtsForTesting(testTts: TextToSpeech?, ready: Boolean = true) {
+        this.tts = testTts
+        this.isReady = ready
     }
 
     /**
